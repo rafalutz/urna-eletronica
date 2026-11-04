@@ -609,8 +609,8 @@
           📄 Boletim de Urna
         </a>
 
-        <button class="btn btn-danger" onclick="zerarEleicao()" title="Zerar votos para nova simulação (Zerésima)">
-          🗑️ Zerésima
+        <button class="btn btn-danger" onclick="zerarEleicao()" title="Resetar votos para nova simulação">
+          🗑️ Resetar
         </button>
       </div>
     </div>
@@ -939,7 +939,7 @@
     }
 
     async function zerarEleicao() {
-      if (!confirm("⚠ ATENÇÃO: Deseja realmente zerar a eleição e emitir a Zerésima?\n\nIsso limpará os votos e os eleitores votados para iniciar uma nova eleição.")) {
+      if (!confirm("⚠ ATENÇÃO: Deseja realmente resetar a eleição?\n\nIsso limpará os votos e os eleitores votados para iniciar uma nova eleição.")) {
         return;
       }
       try {
@@ -948,7 +948,7 @@
         alert(res.message);
         atualizarDados();
       } catch (err) {
-        alert("Erro ao zerar eleição: " + err);
+        alert("Erro ao resetar eleição: " + err);
       }
     }
 

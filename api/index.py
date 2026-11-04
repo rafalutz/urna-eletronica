@@ -232,7 +232,7 @@ def boletim():
 def zerar():
     salvar_json(VOTOS_DB_FILE, [])
     salvar_json(ELEITORES_DB_FILE, [])
-    return jsonify({"success": True, "message": "Urna zerada com sucesso. Zerésima emitida!"})
+    return jsonify({"success": True, "message": "Urna resetada com sucesso!"})
 
 @app.route("/api/votar", methods=["POST"])
 @app.route("/api/index/api/votar", methods=["POST"])

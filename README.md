@@ -48,7 +48,7 @@ python urna.py
 - **Cards de Indicadores (KPIs)**: Total de votos apurados, eleitores que compareceram, candidato líder e percentual.
 - **Ranking Visual de Candidatos**: Barras de progresso com as cores de cada partido, foto/emoji, números e status.
 - **Boletim de Urna (BU)**: Página especial com layout de papel térmico oficial do TSE pronta para visualização e impressão em PDF (`/boletim`).
-- **Zerésima**: Botão com confirmação para zerar a urna e iniciar uma nova rodada de testes do zero (`/api/zerar`).
+- **Resetar**: Botão com confirmação para zerar a urna e iniciar uma nova rodada de testes do zero (`/api/zerar`).
 
 ---
 

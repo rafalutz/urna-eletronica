@@ -270,10 +270,10 @@ def boletim():
 @app.route("/api/zerar", methods=["POST"])
 @app.route("/api/index/api/zerar", methods=["POST"])
 def zerar():
-    """Zera a urna para iniciar uma nova eleição/teste (Gera Zerésima)."""
+    """Reseta a urna para iniciar uma nova eleição/teste."""
     salvar_json(VOTOS_DB_FILE, [])
     salvar_json(ELEITORES_DB_FILE, [])
-    return jsonify({"success": True, "message": "Urna zerada com sucesso. Zerésima emitida!"})
+    return jsonify({"success": True, "message": "Urna resetada com sucesso!"})
 
 @app.route("/api/votar", methods=["POST"])
 @app.route("/api/index/api/votar", methods=["POST"])
