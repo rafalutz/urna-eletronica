@@ -56,6 +56,8 @@ python urna.py
 
 ```text
 urna/
+├── api/
+│   └── index.py             # Ponto de entrada Serverless para a Vercel
 ├── app.py                   # Servidor Flask (backend da apuração e API)
 ├── urna.py                  # Script Python da Urna Eletrônica (Tkinter)
 ├── urna.ipynb               # Notebook da Urna Eletrônica atualizado
@@ -64,5 +66,17 @@ urna/
 ├── templates/
 │   ├── apuracao.html        # Interface moderna da apuração em tempo real
 │   └── boletim.html         # Boletim de Urna oficial para impressão
+├── vercel.json              # Regras de reescrita de rotas para a Vercel
+├── requirements.txt         # Dependências Python para a Vercel
+├── .gitignore               # Arquivos ignorados pelo Git
 └── README.md                # Esta documentação
 ```
+
+---
+
+## ☁️ 5. Deploy na Vercel
+
+O painel de apuração e o Boletim de Urna estão preparados para deploy direto na **Vercel**:
+1. Conecte o repositório GitHub à sua conta na [Vercel](https://vercel.com).
+2. A Vercel detectará o arquivo `requirements.txt` e `api/index.py` automaticamente.
+3. Clique em **Deploy**. A apuração e o boletim estarão disponíveis no seu domínio `.vercel.app`.

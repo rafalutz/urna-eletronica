@@ -3,10 +3,10 @@ import json
 import datetime
 from flask import Flask, render_template, jsonify, request, redirect, url_for
 
-app = Flask(__name__)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+app = Flask(__name__, template_folder=os.path.join(BASE_DIR, "templates"))
 
 # Arquivos de persistência
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ELEITORES_DB_FILE = os.path.join(BASE_DIR, "eleitores_votados.json")
 VOTOS_DB_FILE = os.path.join(BASE_DIR, "votos.json")
 
@@ -54,18 +54,31 @@ CANDIDATOS = [
     },
 ]
 
+# Cache em memoria para compatibilidade com ambientes serverless (Vercel) onde o filesystem e read-only
+_MEMORIA_CACHE = {}
+
 def carregar_json(arquivo, padrao):
+    if arquivo in _MEMORIA_CACHE:
+        return _MEMORIA_CACHE[arquivo]
     if os.path.exists(arquivo):
         try:
             with open(arquivo, "r", encoding="utf-8") as f:
-                return json.load(f)
+                dados = json.load(f)
+                _MEMORIA_CACHE[arquivo] = dados
+                return dados
         except Exception:
             return padrao
     return padrao
 
 def salvar_json(arquivo, dados):
-    with open(arquivo, "w", encoding="utf-8") as f:
-        json.dump(dados, f, ensure_ascii=False, indent=2)
+    _MEMORIA_CACHE[arquivo] = dados
+    try:
+        with open(arquivo, "w", encoding="utf-8") as f:
+            json.dump(dados, f, ensure_ascii=False, indent=2)
+    except (OSError, IOError, PermissionError):
+        # Em ambientes serverless (como Vercel), o diretorio do app e read-only.
+        # Mantem os dados na memoria para evitar erro 500.
+        pass
 
 def sanitizar_sigilo_votos(votos):
     """
