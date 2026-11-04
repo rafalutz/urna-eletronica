@@ -3,8 +3,21 @@ import json
 import datetime
 from flask import Flask, render_template, jsonify, request, redirect, url_for
 
+from jinja2 import ChoiceLoader, FileSystemLoader
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__, template_folder=os.path.join(BASE_DIR, "templates"))
+
+# Configura múltiplos caminhos de template para compatibilidade com Vercel Serverless
+template_dirs = [
+    os.path.join(BASE_DIR, "templates"),
+    os.path.join(BASE_DIR, "api", "templates"),
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates"),
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "api", "templates"),
+]
+valid_dirs = [d for d in template_dirs if os.path.exists(d)]
+if valid_dirs:
+    app.jinja_loader = ChoiceLoader([FileSystemLoader(d) for d in valid_dirs])
 
 # Arquivos de persistência
 ELEITORES_DB_FILE = os.path.join(BASE_DIR, "eleitores_votados.json")
@@ -176,27 +189,54 @@ def obter_dados_apuracao():
         "ultima_atualizacao": agora
     }
 
+def render_tela_apuracao(dados):
+    """Renderiza a tela principal tentando index.html ou apuracao.html como fallback."""
+    try:
+        return render_template("index.html", dados=dados)
+    except Exception:
+        return render_template("apuracao.html", dados=dados)
+
 @app.route("/")
+@app.route("/index")
+@app.route("/apuracao")
+@app.route("/api/index")
+@app.route("/api/index/")
 def index():
     dados = obter_dados_apuracao()
-    return render_template("apuracao.html", dados=dados)
+    return render_tela_apuracao(dados)
 
 @app.route("/api/apuracao")
+@app.route("/api/index/api/apuracao")
 def api_apuracao():
     dados = obter_dados_apuracao()
     return jsonify(dados)
 
 @app.route("/boletim")
+@app.route("/api/index/boletim")
 def boletim():
     dados = obter_dados_apuracao()
     return render_template("boletim.html", dados=dados)
 
 @app.route("/api/zerar", methods=["POST"])
+@app.route("/api/index/api/zerar", methods=["POST"])
 def zerar():
     """Zera a urna para iniciar uma nova eleição/teste (Gera Zerésima)."""
     salvar_json(VOTOS_DB_FILE, [])
     salvar_json(ELEITORES_DB_FILE, [])
     return jsonify({"success": True, "message": "Urna zerada com sucesso. Zerésima emitida!"})
+
+@app.route("/<path:subpath>", methods=["GET", "POST"])
+def catch_all(subpath):
+    """Fallback catch-all para evitar qualquer 404 em ambiente serverless."""
+    clean = subpath.strip("/").replace("api/index/", "")
+    if clean == "boletim":
+        return boletim()
+    elif clean == "api/apuracao":
+        return api_apuracao()
+    elif clean == "api/zerar" and request.method == "POST":
+        return zerar()
+    dados = obter_dados_apuracao()
+    return render_tela_apuracao(dados)
 
 if __name__ == "__main__":
     print("=" * 60)

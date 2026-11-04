@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Apuração Eleitoral — Tribunal Regional Eleitoral</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <!-- Chart.js para visualização gráfica -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg-main: #090d16;
+      --bg-card: #111827;
+      --bg-card-hover: #172237;
+      --bg-glass: rgba(17, 24, 39, 0.75);
+      --border-color: #1f293d;
+      --border-highlight: #2d3b55;
+      --text-primary: #f3f4f6;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent-green: #10b981;
+      --accent-green-glow: rgba(16, 185, 129, 0.25);
+      --accent-blue: #3b82f6;
+      --accent-purple: #8b5cf6;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --tse-yellow: #facc15;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      background: radial-gradient(circle at 50% 0%, #172554 0%, var(--bg-main) 45%, #05070c 100%);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      line-height: 1.5;
+    }
+
+    /* Header Superior */
+    header {
+      background: rgba(9, 13, 22, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      padding: 0.85rem 1.5rem;
+    }
+
+    .header-container {
+      max-width: 1300px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+    }
+
+    .brand-icon {
+      font-size: 2rem;
+      background: #1e293b;
+      border: 1px solid var(--border-highlight);
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    .brand-text h1 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .brand-text p {
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .badge-live {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      color: #34d399;
+      padding: 0.35rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      background: #10b981;
+      border-radius: 50%;
+      box-shadow: 0 0 8px #10b981;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.3); opacity: 1; box-shadow: 0 0 12px #10b981; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: #1e293b;
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+      padding: 0.45rem 0.9rem;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+      background: #27354f;
+      border-color: var(--border-highlight);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      background: var(--accent-blue);
+      border-color: #2563eb;
+      color: white;
+    }
+    .btn-primary:hover {
+      background: #2563eb;
+    }
+
+    .btn-danger {
+      background: rgba(244, 63, 94, 0.15);
+      border-color: rgba(244, 63, 94, 0.3);
+      color: #fb7185;
+    }
+    .btn-danger:hover {
+      background: rgba(244, 63, 94, 0.25);
+      border-color: #f43f5e;
+    }
+
+    /* Container Principal */
+    main {
+      max-width: 1300px;
+      width: 100%;
+      margin: 1.5rem auto;
+      padding: 0 1.25rem;
+      flex: 1;
+    }
+
+    /* Banner de Sigilo Constitucional */
+    .secrecy-banner {
+      background: linear-gradient(90deg, rgba(30, 58, 138, 0.4) 0%, rgba(15, 23, 42, 0.8) 100%);
+      border: 1px solid rgba(59, 130, 246, 0.35);
+      border-left: 4px solid var(--accent-blue);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .secrecy-content {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+    }
+
+    .secrecy-icon {
+      font-size: 1.6rem;
+      color: #60a5fa;
+    }
+
+    .secrecy-text h3 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #93c5fd;
+    }
+
+    .secrecy-text p {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-top: 0.15rem;
+    }
+
+    .secrecy-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      background: rgba(16, 185, 129, 0.12);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 0.35rem 0.65rem;
+      border-radius: 6px;
+      white-space: nowrap;
+    }
+
+    /* Cards de Estatísticas / KPIs */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .kpi-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .kpi-card:hover {
+      border-color: var(--border-highlight);
+      transform: translateY(-2px);
+    }
+
+    .kpi-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 0.5rem;
+    }
+
+    .kpi-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+
+    .kpi-icon {
+      font-size: 1.2rem;
+      padding: 0.4rem;
+      background: rgba(255,255,255,0.04);
+      border-radius: 8px;
+    }
+
+    .kpi-value {
+      font-size: 1.9rem;
+      font-weight: 800;
+      color: #ffffff;
+      font-family: 'JetBrains Mono', monospace;
+      margin-bottom: 0.25rem;
+    }
+
+    .kpi-sub {
+      font-size: 0.76rem;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    /* Layout da Apuração (Colunas) */
+    .tally-layout {
+      display: grid;
+      grid-template-columns: 1.45fr 1fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+
+    @media (max-width: 980px) {
+      .tally-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Lista de Candidatos */
+    .section-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .candidate-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .candidate-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 1.25rem;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.25s ease;
+    }
+
+    .candidate-card:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-highlight);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    }
+
+    .candidate-card.is-leader {
+      border-color: rgba(16, 185, 129, 0.45);
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, var(--bg-card) 60%);
+      box-shadow: 0 0 20px rgba(16, 185, 129, 0.08);
+    }
+
+    .candidate-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.9rem;
+      gap: 0.75rem;
+    }
+
+    .candidate-left {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .rank-badge {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 0.9rem;
+      background: #1e293b;
+      color: var(--text-secondary);
+      border: 1px solid var(--border-color);
+    }
+
+    .is-leader .rank-badge {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: #ffffff;
+      border: none;
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+    }
+
+    .candidate-avatar {
+      font-size: 2.2rem;
+      width: 52px;
+      height: 52px;
+      background: #1e293b;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid var(--border-highlight);
+    }
+
+    .candidate-info h3 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 0.15rem;
+    }
+
+    .candidate-meta {
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .cand-num-badge {
+      background: #1e293b;
+      color: var(--tse-yellow);
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      padding: 0.1rem 0.4rem;
+      border-radius: 4px;
+      border: 1px solid rgba(250, 204, 21, 0.3);
+    }
+
+    .candidate-metrics {
+      text-align: right;
+    }
+
+    .percent-val {
+      font-size: 1.6rem;
+      font-weight: 800;
+      font-family: 'JetBrains Mono', monospace;
+      color: #ffffff;
+    }
+
+    .is-leader .percent-val {
+      color: #34d399;
+    }
+
+    .votes-val {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Barra de Progresso */
+    .progress-track {
+      background: #1e293b;
+      height: 10px;
+      border-radius: 9999px;
+      overflow: hidden;
+      margin-top: 0.5rem;
+      position: relative;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 9999px;
+      transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Coluna Lateral */
+    .side-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .panel-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 1.25rem;
+    }
+
+    .panel-header {
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: #ffffff;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 0.6rem;
+    }
+
+    .chart-container {
+      position: relative;
+      height: 250px;
+      width: 100%;
+    }
+
+    /* Lista de Verificação de Segurança */
+    .audit-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .audit-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.65rem;
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+    }
+
+    .audit-item strong {
+      color: var(--text-primary);
+    }
+
+    .audit-check {
+      color: var(--accent-green);
+      font-weight: bold;
+      font-size: 1rem;
+    }
+
+    /* Rodapé */
+    footer {
+      border-top: 1px solid var(--border-color);
+      background: #070a10;
+      padding: 1.25rem;
+      text-align: center;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 2rem;
+    }
+
+    footer a {
+      color: var(--accent-blue);
+      text-decoration: none;
+    }
+
+    /* Toggle Switch */
+    .toggle-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 36px;
+      height: 20px;
+      background: #334155;
+      border-radius: 9999px;
+      transition: background 0.2s;
+    }
+
+    .toggle-switch.active {
+      background: var(--accent-green);
+    }
+
+    .toggle-knob {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 16px;
+      height: 16px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+
+    .toggle-switch.active .toggle-knob {
+      transform: translateX(16px);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Topo / Header -->
+  <header>
+    <div class="header-container">
+      <div class="brand">
+        <div class="brand-icon">🗳️</div>
+        <div class="brand-text">
+          <h1>TRIBUNAL REGIONAL ELEITORAL</h1>
+          <p>Painel Oficial de Apuração das Eleições Municipais</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <div class="badge-live">
+          <span class="pulse-dot"></span>
+          AO VIVO
+        </div>
+
+        <label class="toggle-wrapper" title="Atualiza os dados automaticamente a cada 3 segundos">
+          <span>Auto-refresh (3s)</span>
+          <div id="toggleSwitch" class="toggle-switch active" onclick="alternarAutoRefresh()">
+            <div class="toggle-knob"></div>
+          </div>
+        </label>
+
+        <button class="btn" onclick="atualizarDados()" title="Atualizar dados agora">
+          🔄 Atualizar
+        </button>
+
+        <a href="/boletim" class="btn" title="Visualizar e Imprimir Boletim de Urna">
+          📄 Boletim de Urna
+        </a>
+
+        <button class="btn btn-danger" onclick="zerarEleicao()" title="Zerar votos para nova simulação (Zerésima)">
+          🗑️ Zerésima
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Conteúdo Principal -->
+  <main>
+    <!-- Banner de Garantia de Sigilo -->
+    <div class="secrecy-banner">
+      <div class="secrecy-content">
+        <div class="secrecy-icon">🛡️</div>
+        <div class="secrecy-text">
+          <h3>Sigilo do Voto Constitucionalmente Garantido (CF/88 Art. 14)</h3>
+          <p>
+            O arquivo <code>votos.json</code> registra apenas o voto isolado (sem CPF, nome ou identificação do eleitor),
+            com ordem aleatoriamente embaralhada (RDV) para impedir correlação temporal.
+          </p>
+        </div>
+      </div>
+      <div class="secrecy-badge">
+        ✔ Registro Digital Anônimo (RDV)
+      </div>
+    </div>
+
+    <!-- Grade de Estatísticas / KPIs -->
+    <div class="kpi-grid">
+      <!-- Total de Votos -->
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-label">Votos Apurados</span>
+          <span class="kpi-icon">🗳️</span>
+        </div>
+        <div class="kpi-value" id="kpiTotalVotos">{{ dados.total_votos }}</div>
+        <div class="kpi-sub">Total de votos depositados na urna</div>
+      </div>
+
+      <!-- Comparecimento -->
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-label">Eleitores Presentes</span>
+          <span class="kpi-icon">👥</span>
+        </div>
+        <div class="kpi-value" id="kpiComparecimento">{{ dados.total_comparecimento }}</div>
+        <div class="kpi-sub">Eleitores cadastrados que compareceram</div>
+      </div>
+
+      <!-- Candidato Líder -->
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-label">Liderança Atual</span>
+          <span class="kpi-icon">🏆</span>
+        </div>
+        <div class="kpi-value" id="kpiLiderNome" style="font-size: 1.4rem;">
+          {% if dados.lider %}
+            {{ dados.lider.foto_char }} {{ dados.lider.nome }}
+          {% else %}
+            —
+          {% endif %}
+        </div>
+        <div class="kpi-sub" id="kpiLiderPerc">
+          {% if dados.lider %}
+            {{ dados.lider.percentual_formatado }} ({{ dados.lider.votos }} votos)
+          {% else %}
+            Aguardando votos
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Horário da Última Atualização -->
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-label">Última Leitura</span>
+          <span class="kpi-icon">⏱️</span>
+        </div>
+        <div class="kpi-value" id="kpiHora" style="font-size: 1.15rem; color: #94a3b8;">
+          {{ dados.ultima_atualizacao }}
+        </div>
+        <div class="kpi-sub" id="kpiTimer">Sincronizado com os arquivos locais</div>
+      </div>
+    </div>
+
+    <!-- Layout da Apuração (Candidatos + Gráfico) -->
+    <div class="tally-layout">
+      
+      <!-- Coluna da Esquerda: Lista de Candidatos -->
+      <div class="candidate-column">
+        <div class="section-title">
+          <span>Ranking de Candidatos a Prefeito</span>
+          <span style="font-size: 0.8rem; font-weight: 500; color: var(--text-muted);">
+            Votos Válidos: <strong id="validosCount" style="color: white;">{{ dados.total_votos }}</strong>
+          </span>
+        </div>
+
+        <div class="candidate-list" id="candidatesList">
+          {% for c in dados.candidatos %}
+          <div class="candidate-card {% if c.posicao == 1 and c.votos > 0 %}is-leader{% endif %}">
+            <div class="candidate-top">
+              <div class="candidate-left">
+                <div class="rank-badge">{{ c.posicao }}º</div>
+                <div class="candidate-avatar">{{ c.foto_char }}</div>
+                <div class="candidate-info">
+                  <h3>{{ c.nome }}</h3>
+                  <div class="candidate-meta">
+                    <span class="cand-num-badge">{{ c.numero }}</span>
+                    <span>{{ c.partido }}</span>
+                    <span>•</span>
+                    <span>Vice: {{ c.vice }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="candidate-metrics">
+                <div class="percent-val">{{ c.percentual_formatado }}</div>
+                <div class="votes-val">{{ c.votos }} {% if c.votos == 1 %}voto{% else %}votos{% endif %}</div>
+              </div>
+            </div>
+
+            <!-- Barra de Progresso com Cor do Candidato -->
+            <div class="progress-track">
+              <div class="progress-fill" style="width: {{ c.percentual }}%; background-color: {{ c.cor }};"></div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Coluna da Direita: Gráfico e Auditoria -->
+      <div class="side-panel">
+        <!-- Card de Gráfico -->
+        <div class="panel-card">
+          <div class="panel-header">
+            <span>📊</span>
+            <span>Distribuição de Votos</span>
+          </div>
+          <div class="chart-container">
+            <canvas id="voteChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Card de Auditoria & Sigilo -->
+        <div class="panel-card">
+          <div class="panel-header">
+            <span>🔒</span>
+            <span>Auditoria e Segurança do Pleito</span>
+          </div>
+          <ul class="audit-list">
+            <li class="audit-item">
+              <span class="audit-check">✔</span>
+              <div>
+                <strong>Desassociação de Identidade:</strong>
+                O eleitor assina apenas a folha de presença (<code>eleitores_votados.json</code>).
+              </div>
+            </li>
+            <li class="audit-item">
+              <span class="audit-check">✔</span>
+              <div>
+                <strong>Votos Descaracterizados:</strong>
+                O arquivo <code>votos.json</code> não contém CPF, nome nem credenciais do eleitor.
+              </div>
+            </li>
+            <li class="audit-item">
+              <span class="audit-check">✔</span>
+              <div>
+                <strong>Embaralhamento Aleatório (RDV):</strong>
+                A ordem dos registros é reordenada a cada voto para impossibilitar correlação temporal.
+              </div>
+            </li>
+            <li class="audit-item">
+              <span class="audit-check">✔</span>
+              <div>
+                <strong>Integridade Matemática:</strong>
+                O número de votantes na presença coincide com os votos computados na urna.
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Rodapé -->
+  <footer>
+    <p>
+      Sistema de Apuração Eleitoral Simulado • Tribunal Regional Eleitoral
+    </p>
+    <p style="margin-top: 0.35rem; color: #475569;">
+      Para registrar novos votos, execute a <strong>Urna Eletrônica</strong> no terminal ou no Jupyter Notebook.
+    </p>
+  </footer>
+
+  <script>
+    // Inicialização do Gráfico Chart.js
+    let voteChartInstance = null;
+    let autoRefreshActive = true;
+    let refreshInterval = null;
+
+    function renderizarGrafico(candidatos) {
+      const ctx = document.getElementById('voteChart').getContext('2d');
+      const labels = candidatos.map(c => `${c.numero} - ${c.nome}`);
+      const data = candidatos.map(c => c.votos);
+      const bgColors = candidatos.map(c => c.cor);
+
+      if (voteChartInstance) {
+        voteChartInstance.data.labels = labels;
+        voteChartInstance.data.datasets[0].data = data;
+        voteChartInstance.data.datasets[0].backgroundColor = bgColors;
+        voteChartInstance.update();
+        return;
+      }
+
+      voteChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: data,
+            backgroundColor: bgColors,
+            borderColor: '#111827',
+            borderWidth: 3,
+            hoverOffset: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                color: '#cbd5e1',
+                font: { family: "'Plus Jakarta Sans', sans-serif", size: 11 },
+                boxWidth: 12,
+                padding: 10
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const val = context.raw || 0;
+                  return ` ${val} voto(s)`;
+                }
+              }
+            }
+          },
+          cutout: '62%'
+        }
+      });
+    }
+
+    // Atualização Assíncrona via Fetch API (/api/apuracao)
+    async function atualizarDados() {
+      try {
+        const resp = await fetch('/api/apuracao');
+        if (!resp.ok) return;
+        const dados = await resp.json();
+
+        // Atualiza KPIs
+        document.getElementById('kpiTotalVotos').innerText = dados.total_votos;
+        document.getElementById('kpiComparecimento').innerText = dados.total_comparecimento;
+        document.getElementById('validosCount').innerText = dados.total_votos;
+        document.getElementById('kpiHora').innerText = dados.ultima_atualizacao;
+
+        if (dados.lider) {
+          document.getElementById('kpiLiderNome').innerText = `${dados.lider.foto_char} ${dados.lider.nome}`;
+          document.getElementById('kpiLiderPerc').innerText = `${dados.lider.percentual_formatado} (${dados.lider.votos} votos)`;
+        } else {
+          document.getElementById('kpiLiderNome').innerText = '—';
+          document.getElementById('kpiLiderPerc').innerText = 'Aguardando votos';
+        }
+
+        // Renderiza lista de candidatos
+        const container = document.getElementById('candidatesList');
+        container.innerHTML = dados.candidatos.map(c => `
+          <div class="candidate-card ${c.posicao === 1 && c.votos > 0 ? 'is-leader' : ''}">
+            <div class="candidate-top">
+              <div class="candidate-left">
+                <div class="rank-badge">${c.posicao}º</div>
+                <div class="candidate-avatar">${c.foto_char}</div>
+                <div class="candidate-info">
+                  <h3>${c.nome}</h3>
+                  <div class="candidate-meta">
+                    <span class="cand-num-badge">${c.numero}</span>
+                    <span>${c.partido}</span>
+                    <span>•</span>
+                    <span>Vice: ${c.vice}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="candidate-metrics">
+                <div class="percent-val">${c.percentual_formatado}</div>
+                <div class="votes-val">${c.votos} ${c.votos === 1 ? 'voto' : 'votos'}</div>
+              </div>
+            </div>
+
+            <div class="progress-track">
+              <div class="progress-fill" style="width: ${c.percentual}%; background-color: ${c.cor};"></div>
+            </div>
+          </div>
+        `).join('');
+
+        // Atualiza gráfico
+        renderizarGrafico(dados.candidatos);
+
+      } catch (err) {
+        console.error("Erro ao atualizar apuração:", err);
+      }
+    }
+
+    function alternarAutoRefresh() {
+      autoRefreshActive = !autoRefreshActive;
+      const toggle = document.getElementById('toggleSwitch');
+      if (autoRefreshActive) {
+        toggle.classList.add('active');
+        iniciarAutoRefresh();
+      } else {
+        toggle.classList.remove('active');
+        clearInterval(refreshInterval);
+      }
+    }
+
+    function iniciarAutoRefresh() {
+      clearInterval(refreshInterval);
+      refreshInterval = setInterval(atualizarDados, 3000);
+    }
+
+    async function zerarEleicao() {
+      if (!confirm("⚠ ATENÇÃO: Deseja realmente zerar a eleição e emitir a Zerésima?\n\nIsso limpará os votos e os eleitores votados para iniciar uma nova eleição.")) {
+        return;
+      }
+      try {
+        const resp = await fetch('/api/zerar', { method: 'POST' });
+        const res = await resp.json();
+        alert(res.message);
+        atualizarDados();
+      } catch (err) {
+        alert("Erro ao zerar eleição: " + err);
+      }
+    }
+
+    // Inicialização ao carregar a página
+    window.addEventListener('DOMContentLoaded', () => {
+      // Dados iniciais injetados pelo Jinja2
+      const candidatosIniciais = {{ dados.candidatos | tojson }};
+      renderizarGrafico(candidatosIniciais);
+      iniciarAutoRefresh();
+    });
+  </script>
+</body>
+</html>
