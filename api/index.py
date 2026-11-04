@@ -9,16 +9,24 @@ ROOT_DIR = os.path.dirname(BASE_DIR)
 
 app = Flask(__name__)
 
+from urllib.parse import parse_qs
+
 class VercelPathMiddleware:
-    """Restaura o caminho original da requisicao no WSGI a partir do header x-matched-path da Vercel."""
+    """Restaura o caminho original da requisicao no WSGI a partir do parametro __path ou x-matched-path da Vercel."""
     def __init__(self, wsgi_app):
         self.wsgi_app = wsgi_app
 
     def __call__(self, environ, start_response):
-        matched_path = environ.get("HTTP_X_MATCHED_PATH") or environ.get("HTTP_X_FORWARDED_URI")
-        if matched_path:
-            clean_path = matched_path.split("?")[0]
-            environ["PATH_INFO"] = clean_path
+        qs = parse_qs(environ.get("QUERY_STRING", ""))
+        if "__path" in qs and qs["__path"]:
+            sub = "/" + qs["__path"][0].lstrip("/")
+            environ["PATH_INFO"] = sub
+        else:
+            matched_path = environ.get("HTTP_X_MATCHED_PATH") or environ.get("HTTP_X_FORWARDED_URI")
+            if matched_path:
+                clean_path = matched_path.split("?")[0]
+                if clean_path not in ("/api/index", "/api/index.py"):
+                    environ["PATH_INFO"] = clean_path
         return self.wsgi_app(environ, start_response)
 
 app.wsgi_app = VercelPathMiddleware(app.wsgi_app)
@@ -194,6 +202,16 @@ def render_tela_apuracao(dados):
 @app.route("/api/index")
 @app.route("/api/index/")
 def index():
+    p = request.args.get("__path", "").strip("/").split("?")[0]
+    if p == "boletim":
+        return boletim()
+    elif p == "api/apuracao":
+        return api_apuracao()
+    elif p == "api/votar" and request.method == "POST":
+        return api_votar()
+    elif p == "api/zerar" and request.method == "POST":
+        return zerar()
+
     dados = obter_dados_apuracao()
     return render_tela_apuracao(dados)
 
