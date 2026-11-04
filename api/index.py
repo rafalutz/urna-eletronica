@@ -41,11 +41,23 @@ CANDIDATOS = [
     {"numero": "50", "nome": "Elena Braga",  "partido": "PARTIDO E", "vice": "Gabriel Souza", "foto_char": "👩", "cor": "#ec4899"},
 ]
 
+TMP_DIR = "/tmp" if os.path.exists("/tmp") else BASE_DIR
+
 _MEMORIA_CACHE = {}
 
 def carregar_json(arquivo, padrao):
     if arquivo in _MEMORIA_CACHE:
         return _MEMORIA_CACHE[arquivo]
+    nome = os.path.basename(arquivo)
+    tmp_path = os.path.join(TMP_DIR, nome)
+    if os.path.exists(tmp_path):
+        try:
+            with open(tmp_path, "r", encoding="utf-8") as f:
+                dados = json.load(f)
+                _MEMORIA_CACHE[arquivo] = dados
+                return dados
+        except Exception:
+            pass
     if os.path.exists(arquivo):
         try:
             with open(arquivo, "r", encoding="utf-8") as f:
@@ -54,6 +66,7 @@ def carregar_json(arquivo, padrao):
                 return dados
         except Exception:
             return padrao
+    _MEMORIA_CACHE[arquivo] = padrao
     return padrao
 
 def salvar_json(arquivo, dados):
@@ -62,6 +75,13 @@ def salvar_json(arquivo, dados):
         with open(arquivo, "w", encoding="utf-8") as f:
             json.dump(dados, f, ensure_ascii=False, indent=2)
     except (OSError, IOError, PermissionError):
+        pass
+    try:
+        nome = os.path.basename(arquivo)
+        tmp_path = os.path.join(TMP_DIR, nome)
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            json.dump(dados, f, ensure_ascii=False, indent=2)
+    except Exception:
         pass
 
 def sanitizar_sigilo_votos(votos):
@@ -182,6 +202,44 @@ def zerar():
     salvar_json(ELEITORES_DB_FILE, [])
     return jsonify({"success": True, "message": "Urna zerada com sucesso. Zerésima emitida!"})
 
+@app.route("/api/votar", methods=["POST"])
+@app.route("/api/index/api/votar", methods=["POST"])
+def api_votar():
+    try:
+        dados = request.get_json(force=True)
+    except Exception:
+        return jsonify({"success": False, "error": "JSON inválido"}), 400
+
+    if not dados or "voto" not in dados:
+        return jsonify({"success": False, "error": "Dados de voto ausentes"}), 400
+
+    voto_recebido = dados.get("voto", {})
+    cpf_eleitor = str(dados.get("cpf_eleitor", "")).strip()
+
+    eleitores = carregar_json(ELEITORES_DB_FILE, [])
+    votos = carregar_json(VOTOS_DB_FILE, [])
+
+    if cpf_eleitor:
+        if cpf_eleitor in eleitores:
+            return jsonify({"success": False, "error": "Eleitor já votou nesta eleição."}), 400
+        eleitores.append(cpf_eleitor)
+
+    campos_permitidos = ["numero_cand", "nome_cand", "partido_cand"]
+    voto_limpo = {k: voto_recebido[k] for k in campos_permitidos if k in voto_recebido}
+
+    import random
+    votos.append(voto_limpo)
+    random.shuffle(votos)
+
+    salvar_json(VOTOS_DB_FILE, votos)
+    salvar_json(ELEITORES_DB_FILE, eleitores)
+
+    return jsonify({
+        "success": True,
+        "message": "Voto computado com sucesso na nuvem!",
+        "total_votos": len(votos)
+    })
+
 @app.route("/<path:subpath>", methods=["GET", "POST"])
 def catch_all(subpath):
     clean = subpath.strip("/").replace("api/index/", "")
@@ -189,6 +247,8 @@ def catch_all(subpath):
         return boletim()
     elif clean == "api/apuracao":
         return api_apuracao()
+    elif clean == "api/votar" and request.method == "POST":
+        return api_votar()
     elif clean == "api/zerar" and request.method == "POST":
         return zerar()
     dados = obter_dados_apuracao()

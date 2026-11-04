@@ -22,6 +22,10 @@ CANDIDATOS = [
 ELEITORES_DB_FILE = "eleitores_votados.json"
 VOTOS_DB_FILE = "votos.json"
 
+# URL do servidor de apuração (para sincronização em tempo real na nuvem ou local)
+# Altere para "http://127.0.0.1:5000" se for rodar o Flask no seu computador
+API_URL = os.environ.get("URNA_API_URL", "https://urna-eletronica-ruddy.vercel.app")
+
 
 def carregar_json(arquivo: str, padrao) -> dict | list:
     if os.path.exists(arquivo):
@@ -417,7 +421,37 @@ class UrnaEletronica(tk.Tk):
         salvar_json(VOTOS_DB_FILE, self.votos)
         salvar_json(ELEITORES_DB_FILE, self.eleitores_votados)
 
+        # Envia voto em tempo real para o servidor na nuvem (Vercel) ou local
+        self._sincronizar_voto_nuvem(registro, self.eleitor_atual["cpf"])
+
         self.mostrar_tela_confirmacao(c)
+
+    def _sincronizar_voto_nuvem(self, registro: dict, cpf: str):
+        """Envia o voto computado de forma assincrona para a Vercel / API."""
+        if not API_URL:
+            return
+
+        def _requisicao():
+            try:
+                import urllib.request
+                import urllib.error
+                url = f"{API_URL.rstrip('/')}/api/votar"
+                payload = json.dumps({
+                    "voto": registro,
+                    "cpf_eleitor": cpf
+                }).encode("utf-8")
+                req = urllib.request.Request(
+                    url,
+                    data=payload,
+                    headers={"Content-Type": "application/json", "User-Agent": "UrnaEletronica/1.0"}
+                )
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    print(f"  🌐 [Nuvem] Voto para candidato nº {registro['numero_cand']} sincronizado com sucesso na Vercel!")
+            except Exception as e:
+                print(f"  ⚠ [Nuvem] Aviso: Nao foi possivel sincronizar voto com a nuvem ({e}). O voto foi registrado localmente.")
+
+        import threading
+        threading.Thread(target=_requisicao, daemon=True).start()
 
     # ══════════════════════════════════════════════════════════
     # RF07 — CANCELAR / VOLTAR
@@ -482,6 +516,11 @@ class UrnaEletronica(tk.Tk):
 # ─────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
+    print("=" * 60)
+    print("  🗳  URNA ELETRÔNICA SIMULADA (TRE)")
+    print(f"  🌐  Painel Conectado: {API_URL}")
+    print("  🔒  Sigilo RDV ativo (Votos desvinculados do CPF)")
+    print("=" * 60)
     app = UrnaEletronica()
     app.mainloop()
 
