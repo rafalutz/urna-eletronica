@@ -8,6 +8,20 @@ from jinja2 import ChoiceLoader, FileSystemLoader
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__, template_folder=os.path.join(BASE_DIR, "templates"))
 
+class VercelPathMiddleware:
+    """Restaura o caminho original da requisicao no WSGI a partir do header x-matched-path da Vercel."""
+    def __init__(self, wsgi_app):
+        self.wsgi_app = wsgi_app
+
+    def __call__(self, environ, start_response):
+        matched_path = environ.get("HTTP_X_MATCHED_PATH") or environ.get("HTTP_X_FORWARDED_URI")
+        if matched_path:
+            clean_path = matched_path.split("?")[0]
+            environ["PATH_INFO"] = clean_path
+        return self.wsgi_app(environ, start_response)
+
+app.wsgi_app = VercelPathMiddleware(app.wsgi_app)
+
 # Configura múltiplos caminhos de template para compatibilidade com Vercel Serverless
 template_dirs = [
     os.path.join(BASE_DIR, "templates"),
