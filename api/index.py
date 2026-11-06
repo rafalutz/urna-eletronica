@@ -1,11 +1,12 @@
 import os
 import json
+import time
 import base64
 import datetime
 import random
 from flask import (
     Flask, render_template, jsonify, request,
-    redirect, url_for, session, send_from_directory
+    redirect, url_for, session, send_from_directory, make_response
 )
 from jinja2 import ChoiceLoader, FileSystemLoader
 from urllib.parse import parse_qs
@@ -15,7 +16,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(BASE_DIR) if os.path.basename(BASE_DIR) == "api" else BASE_DIR
 
 app = Flask(__name__)
-app.secret_key = 'urna-electoral-secret-2024'
+app.secret_key = "urna-electoral-secret-2024-vercel-key"
 
 # ─── Vercel Path Middleware ──────────────────────────────────────────────────
 
@@ -41,6 +42,15 @@ class VercelPathMiddleware:
 
 app.wsgi_app = VercelPathMiddleware(app.wsgi_app)
 
+@app.after_request
+def add_no_cache_headers(response):
+    """Evita cache na CDN da Vercel para que votos e candidatos atualizem em tempo real."""
+    if not request.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
 # ─── Template Loader ─────────────────────────────────────────────────────────
 
 template_dirs = [
@@ -55,7 +65,13 @@ if valid_dirs:
 
 # ─── File helpers ─────────────────────────────────────────────────────────────
 
+TMP_DIR = "/tmp" if os.path.exists("/tmp") else BASE_DIR
+
 def resolver_arquivo(nome):
+    # Prioriza /tmp se já existir (para manter estado na instância serverless)
+    tmp_candidate = os.path.join(TMP_DIR, nome)
+    if os.path.exists(tmp_candidate):
+        return tmp_candidate
     candidatos = [
         os.path.join(BASE_DIR, nome),
         os.path.join(ROOT_DIR, nome),
@@ -67,11 +83,10 @@ def resolver_arquivo(nome):
             return c
     return os.path.join(BASE_DIR, nome)
 
-ELEITORES_DB_FILE = resolver_arquivo("eleitores_votados.json")
-VOTOS_DB_FILE     = resolver_arquivo("votos.json")
-CANDIDATOS_FILE   = resolver_arquivo("candidatos.json")
-
-TMP_DIR = "/tmp" if os.path.exists("/tmp") else BASE_DIR
+ELEITORES_DB_FILE = "eleitores_votados.json"
+VOTOS_DB_FILE     = "votos.json"
+CANDIDATOS_FILE   = "candidatos.json"
+META_FILE         = "urna_meta.json"
 
 # Pasta para upload de fotos (usa /tmp como fallback na Vercel)
 FOTOS_DIR = os.path.join(BASE_DIR, "static", "fotos")
@@ -95,77 +110,132 @@ _MEMORIA_CACHE = {}
 
 # ─── JSON persistence ─────────────────────────────────────────────────────────
 
-def carregar_json(arquivo, padrao):
-    if arquivo in _MEMORIA_CACHE:
-        return _MEMORIA_CACHE[arquivo]
-    nome = os.path.basename(arquivo)
+def carregar_json(nome_arquivo, padrao):
+    nome = os.path.basename(nome_arquivo)
+    if nome in _MEMORIA_CACHE:
+        return _MEMORIA_CACHE[nome]
+
+    # 1. Tenta ler de /tmp (escritas recentes em serverless)
     tmp_path = os.path.join(TMP_DIR, nome)
     if os.path.exists(tmp_path):
         try:
             with open(tmp_path, "r", encoding="utf-8") as f:
                 dados = json.load(f)
-                _MEMORIA_CACHE[arquivo] = dados
+                _MEMORIA_CACHE[nome] = dados
                 return dados
         except Exception:
             pass
-    if os.path.exists(arquivo):
-        try:
-            with open(arquivo, "r", encoding="utf-8") as f:
-                dados = json.load(f)
-                _MEMORIA_CACHE[arquivo] = dados
-                return dados
-        except Exception:
-            return padrao
-    _MEMORIA_CACHE[arquivo] = padrao
+
+    # 2. Tenta ler dos diretórios do projeto
+    for pasta in (BASE_DIR, ROOT_DIR, os.path.join(ROOT_DIR, "api")):
+        caminho = os.path.join(pasta, nome)
+        if os.path.exists(caminho):
+            try:
+                with open(caminho, "r", encoding="utf-8") as f:
+                    dados = json.load(f)
+                    _MEMORIA_CACHE[nome] = dados
+                    return dados
+            except Exception:
+                pass
+
+    _MEMORIA_CACHE[nome] = padrao
     return padrao
 
-def salvar_json(arquivo, dados):
-    _MEMORIA_CACHE[arquivo] = dados
-    try:
-        with open(arquivo, "w", encoding="utf-8") as f:
-            json.dump(dados, f, ensure_ascii=False, indent=2)
-    except (OSError, IOError, PermissionError):
-        pass
-    try:
-        nome = os.path.basename(arquivo)
-        tmp_path = os.path.join(TMP_DIR, nome)
-        with open(tmp_path, "w", encoding="utf-8") as f:
-            json.dump(dados, f, ensure_ascii=False, indent=2)
-    except Exception:
-        pass
+def salvar_json(nome_arquivo, dados):
+    nome = os.path.basename(nome_arquivo)
+    _MEMORIA_CACHE[nome] = dados
+
+    # Salva em todos os locais possíveis (local + /tmp)
+    caminhos = [
+        os.path.join(TMP_DIR, nome),
+        os.path.join(BASE_DIR, nome),
+        os.path.join(ROOT_DIR, nome),
+    ]
+    for caminho in caminhos:
+        try:
+            with open(caminho, "w", encoding="utf-8") as f:
+                json.dump(dados, f, ensure_ascii=False, indent=2)
+        except Exception:
+            pass
+
+def obter_meta():
+    return carregar_json(META_FILE, {"cand_ts": 0, "reset_ts": 0})
+
+def atualizar_meta(cand_ts=None, reset_ts=None):
+    meta = dict(obter_meta())
+    agora_ms = int(time.time() * 1000)
+    if cand_ts is not None:
+        meta["cand_ts"] = cand_ts if cand_ts > 0 else agora_ms
+    if reset_ts is not None:
+        meta["reset_ts"] = reset_ts if reset_ts > 0 else agora_ms
+    salvar_json(META_FILE, meta)
+    return meta
 
 # ─── Candidatos helpers ───────────────────────────────────────────────────────
+
+def converter_foto_local_para_base64(foto_path):
+    """Se foto_path for um caminho /static/fotos/..., converte para data URI base64 para nunca falhar na Vercel."""
+    if not foto_path or foto_path.startswith("data:"):
+        return foto_path
+    rel = foto_path.lstrip("/")
+    possiveis = [
+        os.path.join(BASE_DIR, rel),
+        os.path.join(ROOT_DIR, rel),
+        os.path.join(ROOT_DIR, "api", rel),
+        os.path.join(TMP_DIR, os.path.basename(rel)),
+        os.path.join(FOTOS_DIR, os.path.basename(rel)),
+    ]
+    for p in possiveis:
+        if os.path.exists(p) and os.path.isfile(p):
+            try:
+                with open(p, "rb") as f:
+                    raw = f.read()
+                ext = os.path.splitext(p)[1].lower()
+                mime = "image/jpeg" if ext in (".jpg", ".jpeg") else "image/png"
+                b64 = base64.b64encode(raw).decode("ascii")
+                return f"data:{mime};base64,{b64}"
+            except Exception:
+                pass
+    return foto_path
 
 def carregar_candidatos():
     """Carrega candidatos do JSON, usando padrão se não existir."""
     dados = carregar_json(CANDIDATOS_FILE, None)
-    if dados is None:
+    if not dados:
         salvar_json(CANDIDATOS_FILE, CANDIDATOS_PADRAO)
-        return [ dict(c) for c in CANDIDATOS_PADRAO ]
+        return [dict(c) for c in CANDIDATOS_PADRAO]
+    alterado = False
+    for c in dados:
+        fp = c.get("foto_path", "")
+        if fp and not fp.startswith("data:"):
+            novo_fp = converter_foto_local_para_base64(fp)
+            if novo_fp != fp:
+                c["foto_path"] = novo_fp
+                alterado = True
+    if alterado:
+        salvar_json(CANDIDATOS_FILE, dados)
     return dados
 
 def salvar_candidatos(candidatos):
     salvar_json(CANDIDATOS_FILE, candidatos)
+    atualizar_meta(cand_ts=int(time.time() * 1000))
 
 def get_candidatos():
-    """Retorna a lista de candidatos atualizada."""
     return carregar_candidatos()
 
 def processar_upload_foto(foto_file, numero):
-    """Converte a foto enviada para Data URI base64 (compatível com Vercel serverless) e também tenta salvar localmente."""
+    """Converte a foto enviada para Data URI base64 (100% compatível com Vercel serverless)."""
     if not foto_file or not foto_file.filename:
         return ""
     raw_bytes = foto_file.read()
     if not raw_bytes:
         return ""
-    # Tenta salvar em disco caso seja ambiente local
     try:
         fname = secure_filename(f"{numero}_{foto_file.filename}")
         with open(os.path.join(FOTOS_DIR, fname), "wb") as f:
             f.write(raw_bytes)
     except Exception:
         pass
-    # Retorna Data URI base64 para funcionar tanto na Vercel quanto localmente sem depender de disco
     mime = foto_file.mimetype or "image/png"
     b64 = base64.b64encode(raw_bytes).decode("ascii")
     return f"data:{mime};base64,{b64}"
@@ -187,6 +257,69 @@ def sanitizar_sigilo_votos(votos):
     if alterado:
         salvar_json(VOTOS_DB_FILE, votos_limpos)
     return votos_limpos
+
+# ─── Sincronização Serverless (evita perda de dados entre instâncias Vercel) ──
+
+def sincronizar_estado_cliente(payload):
+    """
+    Mescla de forma segura o estado enviado pelo navegador caso esta instância
+    serverless da Vercel tenha acabado de reiniciar (cold start).
+    """
+    if not payload or not isinstance(payload, dict):
+        return
+
+    meta_srv = obter_meta()
+    srv_reset_ts = meta_srv.get("reset_ts", 0)
+    srv_cand_ts = meta_srv.get("cand_ts", 0)
+
+    cli_reset_ts = int(payload.get("reset_ts") or 0)
+    cli_cand_ts  = int(payload.get("cand_ts") or 0)
+
+    # 1. Se o cliente tem um reset mais recente que esta instância, aplica o reset
+    if cli_reset_ts > srv_reset_ts:
+        salvar_json(VOTOS_DB_FILE, [])
+        salvar_json(ELEITORES_DB_FILE, [])
+        atualizar_meta(reset_ts=cli_reset_ts)
+        srv_reset_ts = cli_reset_ts
+
+    # 2. Se o cliente tem alterações de candidatos (Admin) mais recentes que esta instância, aplica
+    cli_candidatos = payload.get("candidatos")
+    if isinstance(cli_candidatos, list) and len(cli_candidatos) > 0 and cli_cand_ts > srv_cand_ts:
+        salvar_json(CANDIDATOS_FILE, cli_candidatos)
+        atualizar_meta(cand_ts=cli_cand_ts)
+
+    # 3. Se o reset do cliente é compatível (>= srv_reset_ts), garante que nenhum voto computado se perca
+    if cli_reset_ts >= srv_reset_ts:
+        cli_votos = payload.get("votos")
+        cli_eleitores = payload.get("eleitores")
+
+        votos_srv = carregar_json(VOTOS_DB_FILE, [])
+        eleitores_srv = carregar_json(ELEITORES_DB_FILE, [])
+
+        # Mescla eleitores únicos
+        if isinstance(cli_eleitores, list):
+            alterou_el = False
+            for el in cli_eleitores:
+                if el and el not in eleitores_srv:
+                    eleitores_srv.append(el)
+                    alterou_el = True
+            if alterou_el:
+                salvar_json(ELEITORES_DB_FILE, eleitores_srv)
+
+        # Se o cliente tem mais votos computados (após o último reset) que esta instância serverless, restaura
+        if isinstance(cli_votos, list) and len(cli_votos) > len(votos_srv):
+            votos_limpos = sanitizar_sigilo_votos(cli_votos)
+            salvar_json(VOTOS_DB_FILE, votos_limpos)
+
+def obter_estado_completo():
+    meta = obter_meta()
+    return {
+        "candidatos": get_candidatos(),
+        "votos": sanitizar_sigilo_votos(carregar_json(VOTOS_DB_FILE, [])),
+        "eleitores": carregar_json(ELEITORES_DB_FILE, []),
+        "cand_ts": meta.get("cand_ts", 0),
+        "reset_ts": meta.get("reset_ts", 0),
+    }
 
 # ─── Dados de apuração ────────────────────────────────────────────────────────
 
@@ -264,7 +397,8 @@ def obter_dados_apuracao():
         "candidatos":           candidatos_apuracao,
         "lider":                lider,
         "sigilo":               sigilo_info,
-        "ultima_atualizacao":   agora
+        "ultima_atualizacao":   agora,
+        "estado_sync":          obter_estado_completo()
     }
 
 def render_tela_apuracao(dados):
@@ -286,6 +420,8 @@ def despachar_rota(caminho):
         return boletim()
     elif p == "api/apuracao":
         return api_apuracao()
+    elif p == "api/sync":
+        return api_sync()
     elif p == "api/votar":
         return api_votar()
     elif p == "api/zerar":
@@ -330,11 +466,27 @@ def index():
     dados = obter_dados_apuracao()
     return render_tela_apuracao(dados)
 
-@app.route("/api/apuracao")
-@app.route("/api/index/api/apuracao")
+@app.route("/api/apuracao", methods=["GET", "POST"])
+@app.route("/api/index/api/apuracao", methods=["GET", "POST"])
 def api_apuracao():
+    if request.method == "POST":
+        try:
+            payload = request.get_json(force=True, silent=True)
+            sincronizar_estado_cliente(payload)
+        except Exception:
+            pass
     dados = obter_dados_apuracao()
     return jsonify(dados)
+
+@app.route("/api/sync", methods=["POST"])
+@app.route("/api/index/api/sync", methods=["POST"])
+def api_sync():
+    try:
+        payload = request.get_json(force=True, silent=True)
+        sincronizar_estado_cliente(payload)
+    except Exception:
+        pass
+    return jsonify({"success": True, "estado_sync": obter_estado_completo()})
 
 @app.route("/boletim")
 @app.route("/api/index/boletim")
@@ -347,7 +499,12 @@ def boletim():
 def zerar():
     salvar_json(VOTOS_DB_FILE, [])
     salvar_json(ELEITORES_DB_FILE, [])
-    return jsonify({"success": True, "message": "Urna resetada com sucesso!"})
+    atualizar_meta(reset_ts=int(time.time() * 1000))
+    return jsonify({
+        "success": True,
+        "message": "Urna resetada com sucesso!",
+        "estado_sync": obter_estado_completo()
+    })
 
 @app.route("/api/votar", methods=["POST"])
 @app.route("/api/index/api/votar", methods=["POST"])
@@ -360,11 +517,15 @@ def api_votar():
     if not dados or "voto" not in dados:
         return jsonify({"success": False, "error": "Dados de voto ausentes"}), 400
 
+    # Se o cliente enviou seu estado atual junto com o voto, sincroniza antes de computar
+    if "estado_sync" in dados:
+        sincronizar_estado_cliente(dados.get("estado_sync"))
+
     voto_recebido = dados.get("voto", {})
     cpf_eleitor   = str(dados.get("cpf_eleitor", "")).strip()
 
-    eleitores = carregar_json(ELEITORES_DB_FILE, [])
-    votos     = carregar_json(VOTOS_DB_FILE, [])
+    eleitores = list(carregar_json(ELEITORES_DB_FILE, []))
+    votos     = list(carregar_json(VOTOS_DB_FILE, []))
 
     if cpf_eleitor:
         if cpf_eleitor in eleitores:
@@ -383,14 +544,21 @@ def api_votar():
     return jsonify({
         "success": True,
         "message": "Voto computado com sucesso na nuvem!",
-        "total_votos": len(votos)
+        "total_votos": len(votos),
+        "estado_sync": obter_estado_completo()
     })
 
 # ─── API candidatos (para página de votação) ─────────────────────────────────
 
-@app.route("/api/candidatos")
-@app.route("/api/index/api/candidatos")
+@app.route("/api/candidatos", methods=["GET", "POST"])
+@app.route("/api/index/api/candidatos", methods=["GET", "POST"])
 def api_candidatos():
+    if request.method == "POST":
+        try:
+            payload = request.get_json(force=True, silent=True)
+            sincronizar_estado_cliente(payload)
+        except Exception:
+            pass
     candidatos = get_candidatos()
     return jsonify(candidatos)
 
@@ -399,7 +567,7 @@ def api_candidatos():
 @app.route("/votar")
 @app.route("/api/index/votar")
 def votar():
-    return render_template("votar.html")
+    return render_template("votar.html", estado_sync=obter_estado_completo())
 
 # ─── Arquivos estáticos ───────────────────────────────────────────────────────
 
@@ -447,7 +615,7 @@ def admin():
         return redirect("/admin/login")
     candidatos = get_candidatos()
     msg = request.args.get("msg", "")
-    return render_template("admin.html", candidatos=candidatos, msg=msg)
+    return render_template("admin.html", candidatos=candidatos, msg=msg, estado_sync=obter_estado_completo())
 
 # ─── Admin: adicionar candidato ───────────────────────────────────────────────
 
@@ -458,6 +626,16 @@ def admin_candidato_add():
         return redirect("/admin/login")
     erro = None
     if request.method == "POST":
+        # Sincroniza lista prévia enviada pelo form caso o container tenha sofrido cold start
+        backup_json = request.form.get("candidatos_backup", "")
+        if backup_json:
+            try:
+                b_cands = json.loads(backup_json)
+                if isinstance(b_cands, list) and len(b_cands) > 0:
+                    salvar_json(CANDIDATOS_FILE, b_cands)
+            except Exception:
+                pass
+
         numero    = request.form.get("numero", "").strip()
         nome      = request.form.get("nome", "").strip()
         partido   = request.form.get("partido", "").strip()
@@ -466,7 +644,7 @@ def admin_candidato_add():
         cor       = request.form.get("cor", "#3b82f6").strip()
         foto_path = ""
 
-        candidatos = get_candidatos()
+        candidatos = list(get_candidatos())
         if any(c["numero"] == numero for c in candidatos):
             erro = f"Número {numero} já existe. Escolha outro número."
         elif not numero or not nome:
@@ -488,7 +666,7 @@ def admin_candidato_add():
             salvar_candidatos(candidatos)
             return redirect(f"/admin?msg=Candidato+{nome}+adicionado+com+sucesso!")
 
-    return render_template("admin_form.html", modo="add", candidato=None, erro=erro)
+    return render_template("admin_form.html", modo="add", candidato=None, erro=erro, estado_sync=obter_estado_completo())
 
 # ─── Admin: editar candidato ─────────────────────────────────────────────────
 
@@ -498,19 +676,30 @@ def admin_candidato_edit(numero):
     if not admin_logado():
         return redirect("/admin/login")
 
-    candidatos = get_candidatos()
+    if request.method == "POST":
+        backup_json = request.form.get("candidatos_backup", "")
+        if backup_json:
+            try:
+                b_cands = json.loads(backup_json)
+                if isinstance(b_cands, list) and len(b_cands) > 0:
+                    salvar_json(CANDIDATOS_FILE, b_cands)
+            except Exception:
+                pass
+
+    candidatos = list(get_candidatos())
     candidato  = next((c for c in candidatos if c["numero"] == numero), None)
-    if not candidato:
-        return redirect("/admin?msg=Candidato+nao+encontrado.")
+    if not candidato and request.method == "GET":
+        # Cria placeholder que será preenchido pelo backup do cliente se necessário
+        candidato = {"numero": numero, "nome": "", "partido": "", "vice": "", "foto_char": "🗳️", "cor": "#3b82f6", "foto_path": ""}
 
     erro = None
     if request.method == "POST":
         nome      = request.form.get("nome", "").strip()
         partido   = request.form.get("partido", "").strip()
         vice      = request.form.get("vice", "").strip()
-        foto_char = request.form.get("foto_char", candidato.get("foto_char", "🗳️")).strip() or "🗳️"
-        cor       = request.form.get("cor", candidato.get("cor", "#3b82f6")).strip()
-        foto_path = candidato.get("foto_path", "")
+        foto_char = request.form.get("foto_char", (candidato or {}).get("foto_char", "🗳️")).strip() or "🗳️"
+        cor       = request.form.get("cor", (candidato or {}).get("cor", "#3b82f6")).strip()
+        foto_path = (candidato or {}).get("foto_path", "")
 
         if not nome:
             erro = "Nome é obrigatório."
@@ -521,6 +710,7 @@ def admin_candidato_edit(numero):
                 if nova_foto:
                     foto_path = nova_foto
 
+            encontrou = False
             for c in candidatos:
                 if c["numero"] == numero:
                     c["nome"]      = nome
@@ -529,12 +719,23 @@ def admin_candidato_edit(numero):
                     c["foto_char"] = foto_char
                     c["cor"]       = cor
                     c["foto_path"] = foto_path
+                    encontrou = True
                     break
+            if not encontrou:
+                candidatos.append({
+                    "numero":    numero,
+                    "nome":      nome,
+                    "partido":   partido,
+                    "vice":      vice,
+                    "foto_char": foto_char,
+                    "cor":       cor,
+                    "foto_path": foto_path
+                })
 
             salvar_candidatos(candidatos)
             return redirect(f"/admin?msg=Candidato+{nome}+atualizado+com+sucesso!")
 
-    return render_template("admin_form.html", modo="edit", candidato=candidato, erro=erro)
+    return render_template("admin_form.html", modo="edit", candidato=candidato, erro=erro, estado_sync=obter_estado_completo())
 
 # ─── Admin: excluir candidato ────────────────────────────────────────────────
 
@@ -543,6 +744,15 @@ def admin_candidato_edit(numero):
 def admin_candidato_delete(numero):
     if not admin_logado():
         return redirect("/admin/login")
+
+    backup_json = request.form.get("candidatos_backup", "")
+    if backup_json:
+        try:
+            b_cands = json.loads(backup_json)
+            if isinstance(b_cands, list) and len(b_cands) > 0:
+                salvar_json(CANDIDATOS_FILE, b_cands)
+        except Exception:
+            pass
 
     candidatos = get_candidatos()
     candidatos = [c for c in candidatos if c["numero"] != numero]

@@ -160,7 +160,8 @@
         {% set action = '/admin/candidato/add' %}
       {% endif %}
 
-      <form method="POST" action="{{ action }}" enctype="multipart/form-data">
+      <form method="POST" action="{{ action }}" enctype="multipart/form-data" id="candForm">
+        <input type="hidden" name="candidatos_backup" id="candidatosBackupInput" value="">
         <div class="form-grid">
 
           <!-- Número (somente add) -->
@@ -246,6 +247,17 @@
     trigger.addEventListener('mouseenter', openSidebar);
     sidebar.addEventListener('mouseleave', closeSidebar);
     overlay.addEventListener('click', closeSidebar);
+
+    // Preenche backup dos candidatos atuais antes de enviar o formulário (protege contra cold start na Vercel)
+    try {
+      const raw = localStorage.getItem('urna_estado_sync');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && Array.isArray(parsed.candidatos)) {
+          document.getElementById('candidatosBackupInput').value = JSON.stringify(parsed.candidatos);
+        }
+      }
+    } catch (e) {}
   </script>
 </body>
 </html>

@@ -207,7 +207,8 @@
         </div>
         <div class="cand-actions">
           <a href="/admin/candidato/edit/{{ c.numero }}" class="btn">✏️ Editar</a>
-          <form method="POST" action="/admin/candidato/delete/{{ c.numero }}" style="display:inline;" onsubmit="return confirm('Excluir {{ c.nome }}?');">
+          <form method="POST" action="/admin/candidato/delete/{{ c.numero }}" style="display:inline;" onsubmit="preencherBackupForm(this); return confirm('Excluir {{ c.nome }}?');">
+            <input type="hidden" name="candidatos_backup" value="">
             <button type="submit" class="btn btn-danger">🗑️ Excluir</button>
           </form>
         </div>
@@ -237,11 +238,67 @@
     sidebar.addEventListener('mouseleave', closeSidebar);
     overlay.addEventListener('click', closeSidebar);
 
+    const estadoServidor = {{ estado_sync | tojson if estado_sync is defined else 'null' }};
+
+    function preencherBackupForm(form) {
+      try {
+        const raw = localStorage.getItem('urna_estado_sync');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          const input = form.querySelector('input[name="candidatos_backup"]');
+          if (input && parsed.candidatos) {
+            input.value = JSON.stringify(parsed.candidatos);
+          }
+        }
+      } catch(e) {}
+    }
+
+    (async function sincronizarAdmin() {
+      try {
+        const temMsg = new URLSearchParams(window.location.search).has('msg');
+        const raw = localStorage.getItem('urna_estado_sync');
+        const local = raw ? JSON.parse(raw) : null;
+        if (temMsg && estadoServidor) {
+          // Acabou de adicionar/editar/excluir no servidor: atualiza o localStorage
+          const novo = local ? {
+            ...local,
+            candidatos: estadoServidor.candidatos,
+            cand_ts: Date.now()
+          } : { ...estadoServidor, cand_ts: Date.now() };
+          localStorage.setItem('urna_estado_sync', JSON.stringify(novo));
+        } else if (local && local.cand_ts && estadoServidor && (local.cand_ts > (estadoServidor.cand_ts || 0))) {
+          // O container sofreu cold start: restaura candidatos do localStorage no servidor
+          await fetch('/api/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(local)
+          });
+          if (JSON.stringify(local.candidatos) !== JSON.stringify(estadoServidor.candidatos)) {
+            window.location.reload();
+          }
+        } else if (estadoServidor && !local) {
+          localStorage.setItem('urna_estado_sync', JSON.stringify(estadoServidor));
+        }
+      } catch (e) {}
+    })();
+
     async function zerarEleicao() {
       if (!confirm('⚠ ATENÇÃO: Deseja realmente zerar a eleição?\n\nIsso limpará todos os votos e registros de eleitores.')) return;
       try {
         const r   = await fetch('/api/zerar', { method: 'POST' });
         const res = await r.json();
+        if (res.estado_sync) {
+          const raw = localStorage.getItem('urna_estado_sync');
+          const local = raw ? JSON.parse(raw) : {};
+          localStorage.setItem('urna_estado_sync', JSON.stringify({
+            ...res.estado_sync,
+            candidatos: local.candidatos || res.estado_sync.candidatos,
+            cand_ts: local.cand_ts || res.estado_sync.cand_ts || 0,
+            votos: [],
+            eleitores: [],
+            reset_ts: Date.now()
+          }));
+        }
         alert(res.message || 'Eleição zerada com sucesso!');
       } catch(e) {
         alert('Erro ao zerar eleição: ' + e);

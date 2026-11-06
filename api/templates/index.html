@@ -928,12 +928,60 @@
       });
     }
 
+    // Funções de sincronização de estado local <-> serverless (Vercel)
+    function getLocalSyncState() {
+      try {
+        const raw = localStorage.getItem('urna_estado_sync');
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function saveLocalSyncState(novoEstado) {
+      if (!novoEstado) return;
+      try {
+        const atual = getLocalSyncState();
+        if (!atual) {
+          localStorage.setItem('urna_estado_sync', JSON.stringify(novoEstado));
+          return;
+        }
+        const merged = {
+          candidatos: (novoEstado.cand_ts >= (atual.cand_ts || 0) || !atual.candidatos) ? novoEstado.candidatos : atual.candidatos,
+          cand_ts: Math.max(novoEstado.cand_ts || 0, atual.cand_ts || 0),
+          reset_ts: Math.max(novoEstado.reset_ts || 0, atual.reset_ts || 0),
+          votos: novoEstado.votos || [],
+          eleitores: novoEstado.eleitores || []
+        };
+        if ((atual.reset_ts || 0) > (novoEstado.reset_ts || 0)) {
+          merged.votos = [];
+          merged.eleitores = [];
+        } else if ((atual.reset_ts || 0) === (novoEstado.reset_ts || 0)) {
+          if ((atual.votos || []).length > (novoEstado.votos || []).length) {
+            merged.votos = atual.votos;
+          }
+          if ((atual.eleitores || []).length > (novoEstado.eleitores || []).length) {
+            merged.eleitores = atual.eleitores;
+          }
+        }
+        localStorage.setItem('urna_estado_sync', JSON.stringify(merged));
+      } catch (e) {}
+    }
+
     // Atualização Assíncrona via Fetch API (/api/apuracao)
     async function atualizarDados() {
       try {
-        const resp = await fetch('/api/apuracao');
+        const syncLocal = getLocalSyncState();
+        const resp = await fetch('/api/apuracao', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(syncLocal || {})
+        });
         if (!resp.ok) return;
         const dados = await resp.json();
+        if (dados.estado_sync) {
+          saveLocalSyncState(dados.estado_sync);
+        }
 
         // Atualiza KPIs
         document.getElementById('kpiTotalVotos').innerText = dados.total_votos;
@@ -1023,7 +1071,12 @@
     window.addEventListener('DOMContentLoaded', () => {
       // Dados iniciais injetados pelo Jinja2
       const candidatosIniciais = {{ dados.candidatos | tojson }};
+      const estadoInicial = {{ dados.estado_sync | tojson if dados.estado_sync is defined else 'null' }};
+      if (estadoInicial) {
+        saveLocalSyncState(estadoInicial);
+      }
       renderizarGrafico(candidatosIniciais);
+      atualizarDados();
       iniciarAutoRefresh();
 
       // Sidebar

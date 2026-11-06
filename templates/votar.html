@@ -410,10 +410,32 @@
     let digitado   = '';
     let maxDigitos = 2; // padrão, ajustado conforme candidatos
 
+    // ── Sincronização local <-> serverless ──────────────────────────────────
+    function getLocalSyncState() {
+      try {
+        const raw = localStorage.getItem('urna_estado_sync');
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function saveLocalSyncState(novoEstado) {
+      if (!novoEstado) return;
+      try {
+        localStorage.setItem('urna_estado_sync', JSON.stringify(novoEstado));
+      } catch (e) {}
+    }
+
     // ── Carrega candidatos ──────────────────────────────────────────────────
     async function carregarCandidatos() {
       try {
-        const r = await fetch('/api/candidatos');
+        const syncLocal = getLocalSyncState();
+        const r = await fetch('/api/candidatos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(syncLocal || {})
+        });
         candidatos = await r.json();
         // Detecta o maior número de dígitos nos números dos candidatos
         const maxLen = Math.max(...candidatos.map(c => c.numero.length), 2);
@@ -519,9 +541,11 @@
     // ── Envia voto para a API ────────────────────────────────────────────────
     async function enviarVoto(numero, nome, partido, cpf) {
       try {
+        const syncLocal = getLocalSyncState();
         const body = {
           voto: { numero_cand: numero, nome_cand: nome, partido_cand: partido },
-          cpf_eleitor: cpf
+          cpf_eleitor: cpf,
+          estado_sync: syncLocal || undefined
         };
         const r = await fetch('/api/votar', {
           method: 'POST',
@@ -530,6 +554,9 @@
         });
         const res = await r.json();
         if (res.success) {
+          if (res.estado_sync) {
+            saveLocalSyncState(res.estado_sync);
+          }
           document.getElementById('successOverlay').classList.add('show');
           corrigir();
         } else {
