@@ -1,5 +1,6 @@
 import os
 import json
+import base64
 import datetime
 import random
 from flask import (
@@ -11,7 +12,7 @@ from urllib.parse import parse_qs
 from werkzeug.utils import secure_filename
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ROOT_DIR = os.path.dirname(BASE_DIR)
+ROOT_DIR = os.path.dirname(BASE_DIR) if os.path.basename(BASE_DIR) == "api" else BASE_DIR
 
 app = Flask(__name__)
 app.secret_key = 'urna-electoral-secret-2024'
@@ -19,7 +20,7 @@ app.secret_key = 'urna-electoral-secret-2024'
 # ─── Vercel Path Middleware ──────────────────────────────────────────────────
 
 class VercelPathMiddleware:
-    """Restaura o caminho original da requisicao no WSGI a partir do parametro __path ou x-matched-path da Vercel."""
+    """Restaura o caminho original da requisicao no WSGI a partir do parametro __path ou headers da Vercel."""
     def __init__(self, wsgi_app):
         self.wsgi_app = wsgi_app
 
@@ -29,11 +30,13 @@ class VercelPathMiddleware:
             sub = "/" + qs["__path"][0].lstrip("/")
             environ["PATH_INFO"] = sub
         else:
-            matched_path = environ.get("HTTP_X_MATCHED_PATH") or environ.get("HTTP_X_FORWARDED_URI")
-            if matched_path:
-                clean_path = matched_path.split("?")[0]
-                if clean_path not in ("/api/index", "/api/index.py"):
-                    environ["PATH_INFO"] = clean_path
+            for header in ("HTTP_X_FORWARDED_URI", "REQUEST_URI", "HTTP_X_MATCHED_PATH"):
+                val = environ.get(header)
+                if val:
+                    clean_path = val.split("?")[0]
+                    if clean_path and clean_path not in ("/api/index", "/api/index.py", "/"):
+                        environ["PATH_INFO"] = clean_path
+                        break
         return self.wsgi_app(environ, start_response)
 
 app.wsgi_app = VercelPathMiddleware(app.wsgi_app)
@@ -44,6 +47,7 @@ template_dirs = [
     os.path.join(BASE_DIR, "templates"),
     os.path.join(ROOT_DIR, "templates"),
     os.path.join(BASE_DIR, "api", "templates"),
+    os.path.join(ROOT_DIR, "api", "templates"),
 ]
 valid_dirs = [d for d in template_dirs if os.path.exists(d)]
 if valid_dirs:
@@ -55,6 +59,7 @@ def resolver_arquivo(nome):
     candidatos = [
         os.path.join(BASE_DIR, nome),
         os.path.join(ROOT_DIR, nome),
+        os.path.join(ROOT_DIR, "api", nome),
         nome
     ]
     for c in candidatos:
@@ -66,9 +71,15 @@ ELEITORES_DB_FILE = resolver_arquivo("eleitores_votados.json")
 VOTOS_DB_FILE     = resolver_arquivo("votos.json")
 CANDIDATOS_FILE   = resolver_arquivo("candidatos.json")
 
-# Pasta para upload de fotos
+TMP_DIR = "/tmp" if os.path.exists("/tmp") else BASE_DIR
+
+# Pasta para upload de fotos (usa /tmp como fallback na Vercel)
 FOTOS_DIR = os.path.join(BASE_DIR, "static", "fotos")
-os.makedirs(FOTOS_DIR, exist_ok=True)
+try:
+    os.makedirs(FOTOS_DIR, exist_ok=True)
+except OSError:
+    FOTOS_DIR = os.path.join(TMP_DIR, "fotos")
+    os.makedirs(FOTOS_DIR, exist_ok=True)
 
 # ─── Candidatos padrão ────────────────────────────────────────────────────────
 
@@ -79,8 +90,6 @@ CANDIDATOS_PADRAO = [
     {"numero": "40", "nome": "Daniel Rocha", "partido": "PARTIDO D", "vice": "Fernanda Dias", "foto_char": "👨", "cor": "#f59e0b", "foto_path": ""},
     {"numero": "50", "nome": "Elena Braga",  "partido": "PARTIDO E", "vice": "Gabriel Souza", "foto_char": "👩", "cor": "#ec4899", "foto_path": ""},
 ]
-
-TMP_DIR = "/tmp" if os.path.exists("/tmp") else BASE_DIR
 
 _MEMORIA_CACHE = {}
 
@@ -131,20 +140,35 @@ def carregar_candidatos():
     """Carrega candidatos do JSON, usando padrão se não existir."""
     dados = carregar_json(CANDIDATOS_FILE, None)
     if dados is None:
-        # Primeira vez: salva o padrão
         salvar_json(CANDIDATOS_FILE, CANDIDATOS_PADRAO)
-        return list(CANDIDATOS_PADRAO)
+        return [ dict(c) for c in CANDIDATOS_PADRAO ]
     return dados
 
 def salvar_candidatos(candidatos):
     salvar_json(CANDIDATOS_FILE, candidatos)
-    # Invalida cache para forçar reload
-    _MEMORIA_CACHE.pop(CANDIDATOS_FILE, None)
 
 def get_candidatos():
-    """Retorna a lista de candidatos sempre fresca."""
-    _MEMORIA_CACHE.pop(CANDIDATOS_FILE, None)
+    """Retorna a lista de candidatos atualizada."""
     return carregar_candidatos()
+
+def processar_upload_foto(foto_file, numero):
+    """Converte a foto enviada para Data URI base64 (compatível com Vercel serverless) e também tenta salvar localmente."""
+    if not foto_file or not foto_file.filename:
+        return ""
+    raw_bytes = foto_file.read()
+    if not raw_bytes:
+        return ""
+    # Tenta salvar em disco caso seja ambiente local
+    try:
+        fname = secure_filename(f"{numero}_{foto_file.filename}")
+        with open(os.path.join(FOTOS_DIR, fname), "wb") as f:
+            f.write(raw_bytes)
+    except Exception:
+        pass
+    # Retorna Data URI base64 para funcionar tanto na Vercel quanto localmente sem depender de disco
+    mime = foto_file.mimetype or "image/png"
+    b64 = base64.b64encode(raw_bytes).decode("ascii")
+    return f"data:{mime};base64,{b64}"
 
 # ─── Sigilo de votos ─────────────────────────────────────────────────────────
 
@@ -201,7 +225,14 @@ def obter_dados_apuracao():
             "percentual_formatado": f"{perc:.2f}%"
         })
 
-    candidatos_apuracao.sort(key=lambda x: (x["votos"], -int(x["numero"])), reverse=True)
+    def sort_key(x):
+        try:
+            num_int = -int(x["numero"])
+        except ValueError:
+            num_int = 0
+        return (x["votos"], num_int)
+
+    candidatos_apuracao.sort(key=sort_key, reverse=True)
 
     for i, c in enumerate(candidatos_apuracao, 1):
         c["posicao"] = i
@@ -228,12 +259,12 @@ def obter_dados_apuracao():
     agora = datetime.datetime.now().strftime("%d/%m/%Y às %H:%M:%S")
 
     return {
-        "total_votos":        total_votos,
+        "total_votos":          total_votos,
         "total_comparecimento": total_comparecimento,
-        "candidatos":         candidatos_apuracao,
-        "lider":              lider,
-        "sigilo":             sigilo_info,
-        "ultima_atualizacao": agora
+        "candidatos":           candidatos_apuracao,
+        "lider":                lider,
+        "sigilo":               sigilo_info,
+        "ultima_atualizacao":   agora
     }
 
 def render_tela_apuracao(dados):
@@ -247,23 +278,54 @@ def render_tela_apuracao(dados):
 def admin_logado():
     return session.get("admin_logado") is True
 
-# ─── Rotas principais ─────────────────────────────────────────────────────────
+# ─── Despachante unificado para Vercel (__path / catch_all) ──────────────────
 
-@app.route("/")
-@app.route("/index")
-@app.route("/apuracao")
-@app.route("/api/index")
-@app.route("/api/index/")
-def index():
-    p = request.args.get("__path", "").strip("/").split("?")[0]
+def despachar_rota(caminho):
+    p = caminho.strip("/").replace("api/index/", "").split("?")[0]
     if p == "boletim":
         return boletim()
     elif p == "api/apuracao":
         return api_apuracao()
-    elif p == "api/votar" and request.method == "POST":
+    elif p == "api/votar":
         return api_votar()
-    elif p == "api/zerar" and request.method == "POST":
+    elif p == "api/zerar":
         return zerar()
+    elif p == "api/candidatos":
+        return api_candidatos()
+    elif p == "votar":
+        return votar()
+    elif p.startswith("static/"):
+        filename = p[len("static/"):]
+        return static_files(filename)
+    elif p == "admin/logout":
+        return admin_logout()
+    elif p == "admin/login":
+        return admin_login()
+    elif p.startswith("admin/candidato/delete/"):
+        numero = p[len("admin/candidato/delete/"):]
+        return admin_candidato_delete(numero)
+    elif p.startswith("admin/candidato/edit/"):
+        numero = p[len("admin/candidato/edit/"):]
+        return admin_candidato_edit(numero)
+    elif p == "admin/candidato/add":
+        return admin_candidato_add()
+    elif p == "admin":
+        return admin()
+    return None
+
+# ─── Rotas principais ─────────────────────────────────────────────────────────
+
+@app.route("/", methods=["GET", "POST"])
+@app.route("/index", methods=["GET", "POST"])
+@app.route("/apuracao", methods=["GET", "POST"])
+@app.route("/api/index", methods=["GET", "POST"])
+@app.route("/api/index/", methods=["GET", "POST"])
+def index():
+    p = request.args.get("__path", "")
+    if p:
+        resp = despachar_rota(p)
+        if resp is not None:
+            return resp
 
     dados = obter_dados_apuracao()
     return render_tela_apuracao(dados)
@@ -327,6 +389,7 @@ def api_votar():
 # ─── API candidatos (para página de votação) ─────────────────────────────────
 
 @app.route("/api/candidatos")
+@app.route("/api/index/api/candidatos")
 def api_candidatos():
     candidatos = get_candidatos()
     return jsonify(candidatos)
@@ -334,42 +397,54 @@ def api_candidatos():
 # ─── Votação ─────────────────────────────────────────────────────────────────
 
 @app.route("/votar")
+@app.route("/api/index/votar")
 def votar():
     return render_template("votar.html")
 
 # ─── Arquivos estáticos ───────────────────────────────────────────────────────
 
 @app.route("/static/<path:filename>")
+@app.route("/api/index/static/<path:filename>")
 def static_files(filename):
-    static_dir = os.path.join(BASE_DIR, "static")
-    return send_from_directory(static_dir, filename)
+    for d in (
+        os.path.join(BASE_DIR, "static"),
+        os.path.join(ROOT_DIR, "static"),
+        os.path.join(ROOT_DIR, "api", "static"),
+        TMP_DIR,
+    ):
+        if os.path.exists(os.path.join(d, filename)):
+            return send_from_directory(d, filename)
+    return send_from_directory(os.path.join(BASE_DIR, "static"), filename)
 
 # ─── Admin login ─────────────────────────────────────────────────────────────
 
 @app.route("/admin/login", methods=["GET", "POST"])
+@app.route("/api/index/admin/login", methods=["GET", "POST"])
 def admin_login():
     erro = None
     if request.method == "POST":
-        username = request.form.get("username", "")
-        senha    = request.form.get("senha", "")
+        username = request.form.get("username", "").strip()
+        senha    = request.form.get("senha", "").strip()
         if username == "admin" and senha == "1234":
             session["admin_logado"] = True
-            return redirect(url_for("admin"))
+            return redirect("/admin")
         else:
             erro = "Usuário ou senha incorretos."
     return render_template("admin_login.html", erro=erro)
 
 @app.route("/admin/logout")
+@app.route("/api/index/admin/logout")
 def admin_logout():
     session.pop("admin_logado", None)
-    return redirect(url_for("admin_login"))
+    return redirect("/admin/login")
 
 # ─── Admin painel ─────────────────────────────────────────────────────────────
 
 @app.route("/admin")
+@app.route("/api/index/admin")
 def admin():
     if not admin_logado():
-        return redirect(url_for("admin_login"))
+        return redirect("/admin/login")
     candidatos = get_candidatos()
     msg = request.args.get("msg", "")
     return render_template("admin.html", candidatos=candidatos, msg=msg)
@@ -377,17 +452,18 @@ def admin():
 # ─── Admin: adicionar candidato ───────────────────────────────────────────────
 
 @app.route("/admin/candidato/add", methods=["GET", "POST"])
+@app.route("/api/index/admin/candidato/add", methods=["GET", "POST"])
 def admin_candidato_add():
     if not admin_logado():
-        return redirect(url_for("admin_login"))
+        return redirect("/admin/login")
     erro = None
     if request.method == "POST":
-        numero   = request.form.get("numero", "").strip()
-        nome     = request.form.get("nome", "").strip()
-        partido  = request.form.get("partido", "").strip()
-        vice     = request.form.get("vice", "").strip()
-        foto_char = request.form.get("foto_char", "🗳️").strip()
-        cor      = request.form.get("cor", "#3b82f6").strip()
+        numero    = request.form.get("numero", "").strip()
+        nome      = request.form.get("nome", "").strip()
+        partido   = request.form.get("partido", "").strip()
+        vice      = request.form.get("vice", "").strip()
+        foto_char = request.form.get("foto_char", "🗳️").strip() or "🗳️"
+        cor       = request.form.get("cor", "#3b82f6").strip()
         foto_path = ""
 
         candidatos = get_candidatos()
@@ -396,12 +472,9 @@ def admin_candidato_add():
         elif not numero or not nome:
             erro = "Número e nome são obrigatórios."
         else:
-            # Upload de foto
             foto = request.files.get("foto")
             if foto and foto.filename:
-                fname = secure_filename(f"{numero}_{foto.filename}")
-                foto.save(os.path.join(FOTOS_DIR, fname))
-                foto_path = f"/static/fotos/{fname}"
+                foto_path = processar_upload_foto(foto, numero)
 
             candidatos.append({
                 "numero":    numero,
@@ -413,40 +486,40 @@ def admin_candidato_add():
                 "foto_path": foto_path
             })
             salvar_candidatos(candidatos)
-            return redirect(url_for("admin", msg=f"Candidato {nome} adicionado com sucesso!"))
+            return redirect(f"/admin?msg=Candidato+{nome}+adicionado+com+sucesso!")
 
     return render_template("admin_form.html", modo="add", candidato=None, erro=erro)
 
 # ─── Admin: editar candidato ─────────────────────────────────────────────────
 
 @app.route("/admin/candidato/edit/<numero>", methods=["GET", "POST"])
+@app.route("/api/index/admin/candidato/edit/<numero>", methods=["GET", "POST"])
 def admin_candidato_edit(numero):
     if not admin_logado():
-        return redirect(url_for("admin_login"))
+        return redirect("/admin/login")
 
     candidatos = get_candidatos()
     candidato  = next((c for c in candidatos if c["numero"] == numero), None)
     if not candidato:
-        return redirect(url_for("admin", msg="Candidato não encontrado."))
+        return redirect("/admin?msg=Candidato+nao+encontrado.")
 
     erro = None
     if request.method == "POST":
         nome      = request.form.get("nome", "").strip()
         partido   = request.form.get("partido", "").strip()
         vice      = request.form.get("vice", "").strip()
-        foto_char = request.form.get("foto_char", candidato.get("foto_char", "🗳️")).strip()
+        foto_char = request.form.get("foto_char", candidato.get("foto_char", "🗳️")).strip() or "🗳️"
         cor       = request.form.get("cor", candidato.get("cor", "#3b82f6")).strip()
         foto_path = candidato.get("foto_path", "")
 
         if not nome:
             erro = "Nome é obrigatório."
         else:
-            # Upload de nova foto (opcional)
             foto = request.files.get("foto")
             if foto and foto.filename:
-                fname = secure_filename(f"{numero}_{foto.filename}")
-                foto.save(os.path.join(FOTOS_DIR, fname))
-                foto_path = f"/static/fotos/{fname}"
+                nova_foto = processar_upload_foto(foto, numero)
+                if nova_foto:
+                    foto_path = nova_foto
 
             for c in candidatos:
                 if c["numero"] == numero:
@@ -459,43 +532,30 @@ def admin_candidato_edit(numero):
                     break
 
             salvar_candidatos(candidatos)
-            return redirect(url_for("admin", msg=f"Candidato {nome} atualizado com sucesso!"))
+            return redirect(f"/admin?msg=Candidato+{nome}+atualizado+com+sucesso!")
 
     return render_template("admin_form.html", modo="edit", candidato=candidato, erro=erro)
 
 # ─── Admin: excluir candidato ────────────────────────────────────────────────
 
 @app.route("/admin/candidato/delete/<numero>", methods=["POST"])
+@app.route("/api/index/admin/candidato/delete/<numero>", methods=["POST"])
 def admin_candidato_delete(numero):
     if not admin_logado():
-        return redirect(url_for("admin_login"))
+        return redirect("/admin/login")
 
     candidatos = get_candidatos()
     candidatos = [c for c in candidatos if c["numero"] != numero]
     salvar_candidatos(candidatos)
-    return redirect(url_for("admin", msg=f"Candidato {numero} removido."))
+    return redirect(f"/admin?msg=Candidato+{numero}+removido.")
 
 # ─── Catch-all (Vercel compatibility) ────────────────────────────────────────
 
 @app.route("/<path:subpath>", methods=["GET", "POST"])
 def catch_all(subpath):
-    clean = subpath.strip("/").replace("api/index/", "")
-    if clean == "boletim":
-        return boletim()
-    elif clean == "api/apuracao":
-        return api_apuracao()
-    elif clean == "api/votar" and request.method == "POST":
-        return api_votar()
-    elif clean == "api/zerar" and request.method == "POST":
-        return zerar()
-    elif clean == "votar":
-        return votar()
-    elif clean == "admin":
-        return admin()
-    elif clean in ("admin/login",):
-        return admin_login()
-    elif clean == "admin/logout":
-        return admin_logout()
+    resp = despachar_rota(subpath)
+    if resp is not None:
+        return resp
     dados = obter_dados_apuracao()
     return render_tela_apuracao(dados)
 
