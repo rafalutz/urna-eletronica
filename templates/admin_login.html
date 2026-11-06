@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Login | Tribunal Regional Eleitoral</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-main: #090d16;
+      --bg-card: #111827;
+      --border-color: #1f293d;
+      --border-highlight: #2d3b55;
+      --text-primary: #f3f4f6;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent-blue: #3b82f6;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      background: radial-gradient(circle at 50% 0%, #172554 0%, var(--bg-main) 45%, #05070c 100%);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .login-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 2.5rem 2rem;
+      width: 100%; max-width: 400px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+    .login-logo {
+      text-align: center; margin-bottom: 1.5rem;
+    }
+    .login-logo .icon {
+      font-size: 3rem;
+      background: #1e293b;
+      border: 1px solid var(--border-highlight);
+      width: 72px; height: 72px;
+      display: inline-flex; align-items: center; justify-content: center;
+      border-radius: 18px; margin-bottom: 1rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    .login-logo h1 { font-size: 1.1rem; font-weight: 800; color: #fff; }
+    .login-logo p  { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 0.25rem; }
+
+    .form-group { margin-bottom: 1rem; }
+    label {
+      display: block; font-size: 0.75rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.05em;
+      color: var(--text-muted); margin-bottom: 0.4rem;
+    }
+    input[type="text"], input[type="password"] {
+      width: 100%; padding: 0.7rem 1rem;
+      background: #0d1424; border: 1px solid var(--border-color);
+      border-radius: 10px; color: #fff;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.95rem;
+      outline: none; transition: border-color 0.2s;
+    }
+    input:focus { border-color: var(--accent-blue); }
+
+    .btn-login {
+      width: 100%; padding: 0.85rem;
+      background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+      border: none; border-radius: 10px;
+      color: #fff; font-weight: 800; font-size: 1rem;
+      cursor: pointer; transition: all 0.2s;
+      margin-top: 0.5rem;
+    }
+    .btn-login:hover { filter: brightness(1.1); transform: translateY(-1px); }
+
+    .erro-msg {
+      background: rgba(239,68,68,0.15);
+      border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 10px; padding: 0.75rem 1rem;
+      color: #fca5a5; font-size: 0.85rem;
+      margin-bottom: 1rem; text-align: center;
+    }
+    .back-link {
+      display: block; text-align: center;
+      margin-top: 1.25rem; color: var(--text-muted);
+      font-size: 0.8rem; text-decoration: none;
+      transition: color 0.2s;
+    }
+    .back-link:hover { color: var(--accent-blue); }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="icon">🔐</div>
+      <h1>ÁREA ADMINISTRATIVA</h1>
+      <p>Tribunal Regional Eleitoral</p>
+    </div>
+
+    {% if erro %}
+    <div class="erro-msg">❌ {{ erro }}</div>
+    {% endif %}
+
+    <form method="POST" action="/admin/login">
+      <div class="form-group">
+        <label>Usuário</label>
+        <input type="text" name="username" placeholder="admin" autocomplete="username" required>
+      </div>
+      <div class="form-group">
+        <label>Senha</label>
+        <input type="password" name="senha" placeholder="••••••" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="btn-login">🔓 Entrar</button>
+    </form>
+
+    <a href="/" class="back-link">← Voltar para Apuração</a>
+  </div>
+</body>
+</html>

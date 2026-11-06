@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Administração — Painel | Tribunal Regional Eleitoral</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-main: #090d16;
+      --bg-card: #111827;
+      --border-color: #1f293d;
+      --border-highlight: #2d3b55;
+      --text-primary: #f3f4f6;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent-blue: #3b82f6;
+      --accent-green: #10b981;
+      --tse-yellow: #facc15;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      background: radial-gradient(circle at 50% 0%, #172554 0%, var(--bg-main) 45%, #05070c 100%);
+      color: var(--text-primary);
+      min-height: 100vh; display: flex; flex-direction: column;
+    }
+
+    /* ── Sidebar ── */
+    #sidebarTrigger { position: fixed; left: 0; top: 0; width: 20px; height: 100vh; z-index: 998; cursor: pointer; }
+    #sidebar { position: fixed; left: -280px; top: 0; width: 280px; height: 100vh; background: #0d1424; border-right: 1px solid #1f293d; z-index: 999; transition: left 0.3s ease; padding: 2rem 1.5rem; display: flex; flex-direction: column; gap: 0.5rem; box-shadow: 4px 0 24px rgba(0,0,0,0.5); }
+    #sidebar.open { left: 0; }
+    .sidebar-logo { font-size: 1.3rem; font-weight: 800; color: #fff; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid #1f293d; }
+    .sidebar-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem 1rem; border-radius: 10px; color: #94a3b8; text-decoration: none; font-weight: 600; font-size: 0.95rem; transition: all 0.2s; }
+    .sidebar-item:hover { background: #1e293b; color: #fff; }
+    .sidebar-item.active { background: #1e3a5f; color: #60a5fa; }
+    #sidebarOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 997; }
+    #sidebarOverlay.show { display: block; }
+
+    /* ── Header ── */
+    header {
+      background: rgba(9,13,22,0.85); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-color);
+      position: sticky; top: 0; z-index: 50; padding: 0.85rem 1.5rem;
+    }
+    .header-container {
+      max-width: 1200px; margin: 0 auto;
+      display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+    }
+    .brand { display: flex; align-items: center; gap: 0.85rem; }
+    .brand-icon { font-size: 2rem; background: #1e293b; border: 1px solid var(--border-highlight); width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 12px; }
+    .brand-text h1 { font-size: 1.1rem; font-weight: 800; color: #fff; }
+    .brand-text p  { font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.45rem 0.9rem; border-radius: 8px;
+      font-size: 0.82rem; font-weight: 600; cursor: pointer;
+      text-decoration: none; border: 1px solid var(--border-color);
+      background: #1e293b; color: var(--text-primary);
+      transition: all 0.2s;
+    }
+    .btn:hover { background: #27354f; }
+    .btn-primary { background: var(--accent-blue); border-color: #2563eb; color: #fff; }
+    .btn-primary:hover { background: #2563eb; }
+    .btn-danger  { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); color: #fca5a5; }
+    .btn-danger:hover { background: rgba(239,68,68,0.2); }
+
+    /* ── Main ── */
+    main { max-width: 1200px; width: 100%; margin: 2rem auto; padding: 0 1.25rem; flex: 1; }
+
+    /* ── Toast ── */
+    .flash-msg {
+      background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3);
+      color: #34d399; border-radius: 10px; padding: 0.75rem 1.25rem;
+      margin-bottom: 1.5rem; font-size: 0.9rem; font-weight: 600;
+    }
+
+    /* ── Page title ── */
+    .page-title {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1.5rem; gap: 1rem; flex-wrap: wrap;
+    }
+    .page-title h2 { font-size: 1.4rem; font-weight: 800; }
+    .page-title p  { font-size: 0.82rem; color: var(--text-muted); margin-top: 0.2rem; }
+
+    /* ── Candidates grid ── */
+    .cand-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+    .cand-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 14px; padding: 1.25rem;
+      display: flex; flex-direction: column; gap: 0.75rem;
+      transition: all 0.2s;
+    }
+    .cand-card:hover { border-color: var(--border-highlight); transform: translateY(-2px); }
+    .cand-card-top { display: flex; align-items: center; gap: 1rem; }
+    .cand-avatar {
+      width: 56px; height: 56px; border-radius: 12px;
+      background: #1e293b; border: 2px solid var(--border-highlight);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2.2rem; overflow: hidden; flex-shrink: 0;
+    }
+    .cand-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .cand-card-info h3 { font-size: 1rem; font-weight: 700; color: #fff; }
+    .cand-card-info .meta {
+      font-size: 0.75rem; color: var(--text-muted);
+      display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.2rem;
+    }
+    .num-badge {
+      background: #1e293b; color: var(--tse-yellow);
+      font-family: 'JetBrains Mono', monospace; font-weight: 700;
+      padding: 0.1rem 0.4rem; border-radius: 4px;
+      border: 1px solid rgba(250,204,21,0.3); font-size: 0.75rem;
+    }
+    .cor-dot {
+      display: inline-block; width: 12px; height: 12px;
+      border-radius: 50%; border: 1px solid rgba(255,255,255,0.2);
+    }
+    .cand-actions { display: flex; gap: 0.5rem; margin-top: 0.25rem; }
+    .cand-actions .btn { font-size: 0.75rem; padding: 0.35rem 0.7rem; }
+
+    /* ── Empty state ── */
+    .empty-state {
+      text-align: center; padding: 4rem 1rem;
+      color: var(--text-muted); font-size: 1rem;
+    }
+    .empty-state .icon { font-size: 3rem; margin-bottom: 1rem; }
+
+    footer { border-top: 1px solid var(--border-color); background: #070a10; padding: 1rem; text-align: center; font-size: 0.75rem; color: var(--text-muted); margin-top: auto; }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <div id="sidebarTrigger"></div>
+  <div id="sidebar">
+    <div class="sidebar-logo">🗳️ Menu</div>
+    <nav>
+      <a href="/" class="sidebar-item">📊 Apuração</a>
+      <a href="/votar" class="sidebar-item">✅ Votar</a>
+      <a href="/admin" class="sidebar-item active">🔐 Administrador</a>
+    </nav>
+  </div>
+  <div id="sidebarOverlay"></div>
+
+  <header>
+    <div class="header-container">
+      <div class="brand">
+        <div class="brand-icon">🔐</div>
+        <div class="brand-text">
+          <h1>PAINEL ADMINISTRATIVO</h1>
+          <p>Tribunal Regional Eleitoral — Gestão de Candidatos</p>
+        </div>
+      </div>
+      <div style="display:flex;gap:0.5rem;align-items:center;">
+        <a href="/votar" class="btn">🗳️ Ir para Urna</a>
+        <a href="/admin/logout" class="btn btn-danger">🔓 Sair</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    {% if msg %}
+    <div class="flash-msg">✅ {{ msg }}</div>
+    {% endif %}
+
+    <div class="page-title">
+      <div>
+        <h2>👥 Candidatos Cadastrados</h2>
+        <p>{{ candidatos|length }} candidato(s) no sistema</p>
+      </div>
+      <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+        <button class="btn btn-danger" onclick="zerarEleicao()">🗑️ Zerar Eleição</button>
+        <a href="/admin/candidato/add" class="btn btn-primary">➕ Adicionar Candidato</a>
+      </div>
+    </div>
+
+    {% if candidatos %}
+    <div class="cand-grid">
+      {% for c in candidatos %}
+      <div class="cand-card">
+        <div class="cand-card-top">
+          <div class="cand-avatar" style="border-color: {{ c.cor }}40;">
+            {% if c.foto_path %}
+              <img src="{{ c.foto_path }}" alt="{{ c.nome }}">
+            {% else %}
+              {{ c.foto_char }}
+            {% endif %}
+          </div>
+          <div class="cand-card-info">
+            <h3>{{ c.nome }}</h3>
+            <div class="meta">
+              <span class="num-badge">{{ c.numero }}</span>
+              <span>{{ c.partido }}</span>
+              <span class="cor-dot" style="background:{{ c.cor }};"></span>
+            </div>
+            {% if c.vice %}
+            <div style="font-size:0.72rem;color:var(--text-muted);margin-top:0.2rem;">Vice: {{ c.vice }}</div>
+            {% endif %}
+          </div>
+        </div>
+        <div class="cand-actions">
+          <a href="/admin/candidato/edit/{{ c.numero }}" class="btn">✏️ Editar</a>
+          <form method="POST" action="/admin/candidato/delete/{{ c.numero }}" style="display:inline;" onsubmit="return confirm('Excluir {{ c.nome }}?');">
+            <button type="submit" class="btn btn-danger">🗑️ Excluir</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <div class="icon">👤</div>
+      <p>Nenhum candidato cadastrado.</p>
+      <a href="/admin/candidato/add" class="btn btn-primary" style="margin-top:1rem;">➕ Adicionar primeiro candidato</a>
+    </div>
+    {% endif %}
+  </main>
+
+  <footer>
+    <p>Painel Administrativo — Tribunal Regional Eleitoral</p>
+  </footer>
+
+  <script>
+    const sidebar = document.getElementById('sidebar');
+    const trigger = document.getElementById('sidebarTrigger');
+    const overlay = document.getElementById('sidebarOverlay');
+    function openSidebar()  { sidebar.classList.add('open');    overlay.classList.add('show'); }
+    function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
+    trigger.addEventListener('mouseenter', openSidebar);
+    sidebar.addEventListener('mouseleave', closeSidebar);
+    overlay.addEventListener('click', closeSidebar);
+
+    async function zerarEleicao() {
+      if (!confirm('⚠ ATENÇÃO: Deseja realmente zerar a eleição?\n\nIsso limpará todos os votos e registros de eleitores.')) return;
+      try {
+        const r   = await fetch('/api/zerar', { method: 'POST' });
+        const res = await r.json();
+        alert(res.message || 'Eleição zerada com sucesso!');
+      } catch(e) {
+        alert('Erro ao zerar eleição: ' + e);
+      }
+    }
+  </script>
+</body>
+</html>
