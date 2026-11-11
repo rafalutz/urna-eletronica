@@ -1,11 +1,3 @@
-"""
-=============================================================================
-  PROJETO: Urna Eletrônica Universitária (Trabalho de Faculdade)
-  ARQUIVO: app.py
-  EXECUÇÃO: python app.py
-=============================================================================
-"""
-
 import sys
 import os
 
@@ -21,4 +13,4 @@ if __name__ == "__main__":
     print("  🗳️  URNA ELETRÔNICA UNIVERSITÁRIA - PROJETO ACADÊMICO")
     print("  🌐  Servidor rodando em: http://127.0.0.1:5000")
     print("=" * 60)
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)
