@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Boletim de Urna (BU) — Justiça Eleitoral</title>
+  <style>
+    /* ─── Estilo do Boletim de Urna (Formato de Recibo Oficial) ─── */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Courier New', Courier, monospace;
+    }
+
+    body {
+      background-color: #f1f5f9;
+      color: #0f172a;
+      padding: 20px 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* Barra de Ações (Voltar e Imprimir) */
+    .barra-acoes {
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      font-family: Arial, sans-serif;
+    }
+    .btn {
+      font-family: Arial, sans-serif;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: bold;
+      cursor: pointer;
+      border: none;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-voltar {
+      background-color: #475569;
+      color: white;
+    }
+    .btn-voltar:hover {
+      background-color: #334155;
+    }
+    .btn-imprimir {
+      background-color: #16a34a;
+      color: white;
+    }
+    .btn-imprimir:hover {
+      background-color: #15803d;
+    }
+
+    /* Papel do Boletim */
+    .boletim-papel {
+      background-color: #ffffff;
+      width: 100%;
+      max-width: 480px;
+      padding: 24px;
+      border: 1px dashed #94a3b8;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    .boletim-cabecalho {
+      text-align: center;
+      border-bottom: 2px dashed #0f172a;
+      padding-bottom: 12px;
+      margin-bottom: 14px;
+    }
+    .boletim-cabecalho h2 {
+      font-size: 1.1rem;
+      font-weight: bold;
+    }
+    .boletim-cabecalho p {
+      font-size: 0.8rem;
+    }
+
+    .divisor {
+      border-top: 1px dashed #cbd5e1;
+      margin: 12px 0;
+    }
+
+    .linha-info {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+
+    .tabela-votos {
+      width: 100%;
+      margin: 12px 0;
+      border-collapse: collapse;
+    }
+    .tabela-votos th {
+      text-align: left;
+      border-bottom: 1px solid #0f172a;
+      padding: 4px 0;
+      font-size: 0.85rem;
+    }
+    .tabela-votos td {
+      padding: 4px 0;
+      font-size: 0.85rem;
+    }
+
+    .boletim-rodape {
+      text-align: center;
+      border-top: 2px dashed #0f172a;
+      padding-top: 14px;
+      margin-top: 14px;
+      font-size: 0.75rem;
+    }
+    .hash-seguranca {
+      word-break: break-all;
+      background-color: #f8fafc;
+      padding: 6px;
+      border: 1px solid #e2e8f0;
+      margin-top: 6px;
+      font-size: 0.7rem;
+    }
+
+    /* Estilo na Impressão */
+    @media print {
+      body {
+        background-color: white;
+        padding: 0;
+      }
+      .barra-acoes {
+        display: none;
+      }
+      .boletim-papel {
+        border: none;
+        box-shadow: none;
+        max-width: 100%;
+        padding: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Barra com botões de ação -->
+  <div class="barra-acoes">
+    <a href="/" class="btn btn-voltar">⬅ Voltar</a>
+    <button class="btn btn-imprimir" onclick="window.print()">🖨️ Imprimir Boletim</button>
+  </div>
+
+  <!-- Folha do Boletim de Urna -->
+  <article class="boletim-papel">
+
+    <div class="boletim-cabecalho">
+      <h2>JUSTIÇA ELEITORAL</h2>
+      <p>TRIBUNAL REGIONAL ELEITORAL</p>
+      <p>BOLETIM DE URNA (BU)</p>
+      <p>Simulação Universitária — Trabalho de Faculdade</p>
+    </div>
+
+    <div class="linha-info">
+      <span>Data e Hora:</span>
+      <strong>{{ dados.ultima_atualizacao }}</strong>
+    </div>
+    <div class="linha-info">
+      <span>Município:</span>
+      <span>CIDADE UNIVERSITÁRIA</span>
+    </div>
+    <div class="linha-info">
+      <span>Zona / Seção:</span>
+      <span>001 / 0100</span>
+    </div>
+
+    <div class="divisor"></div>
+
+    <div class="linha-info">
+      <span>Eleitores Aptos / Votantes:</span>
+      <strong>{{ dados.total_comparecimento }}</strong>
+    </div>
+    <div class="linha-info">
+      <span>Total de Votos na Urna:</span>
+      <strong>{{ dados.total_votos }}</strong>
+    </div>
+
+    <div class="divisor"></div>
+
+    <p style="font-weight: bold; margin-bottom: 6px;">VOTAÇÃO NOMINAL — PREFEITO</p>
+
+    <table class="tabela-votos">
+      <thead>
+        <tr>
+          <th>Nº</th>
+          <th>Candidato / Partido</th>
+          <th style="text-align: right;">Votos</th>
+          <th style="text-align: right;">%</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in dados.candidatos %}
+        <tr>
+          <td>{{ c.numero }}</td>
+          <td>{{ c.nome }} ({{ c.partido }})</td>
+          <td style="text-align: right;">{{ c.votos }}</td>
+          <td style="text-align: right;">{{ c.percentual_formatado }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="divisor"></div>
+
+    <div class="linha-info">
+      <span>Votos em Branco:</span>
+      <strong>{{ dados.votos_brancos }}</strong>
+    </div>
+    <div class="linha-info">
+      <span>Votos Nulos:</span>
+      <strong>{{ dados.votos_nulos }}</strong>
+    </div>
+
+    <div class="boletim-rodape">
+      <p>FIM DO BOLETIM DE URNA</p>
+      <p>Autenticação Digital:</p>
+      <div class="hash-seguranca">
+        SHA256: 7e4a90b12c88f4e29910d5c801bc249f3e1a052b904c1a7d6e8
+      </div>
+    </div>
+
+  </article>
+
+</body>
+</html>

@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login do Administrador — Urna Eletrônica</title>
+  <style>
+    /* ─── Estilos do Login (Básico e Limpo para Faculdade) ─── */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      background-color: #f1f5f9;
+      color: #334155;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .card-login {
+      background: white;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 30px;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+
+    .login-topo {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .login-topo h1 {
+      font-size: 1.4rem;
+      color: #1e3a8a;
+      margin-top: 8px;
+    }
+    .login-topo p {
+      font-size: 0.85rem;
+      color: #64748b;
+      margin-top: 4px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 0.9rem;
+      font-weight: bold;
+      color: #1e293b;
+      margin-bottom: 6px;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 1rem;
+      outline: none;
+    }
+    .form-group input:focus {
+      border-color: #2563eb;
+    }
+
+    .alerta-erro {
+      background-color: #fee2e2;
+      border: 1px solid #f87171;
+      color: #b91c1c;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    .dica-padrao {
+      background-color: #e0f2fe;
+      border: 1px solid #bae6fd;
+      color: #0369a1;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    .btn-entrar {
+      width: 100%;
+      background-color: #1e3a8a;
+      color: white;
+      border: none;
+      padding: 12px;
+      font-size: 1rem;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .btn-entrar:hover {
+      background-color: #1d4ed8;
+    }
+
+    .link-voltar {
+      display: block;
+      text-align: center;
+      margin-top: 18px;
+      font-size: 0.85rem;
+      color: #2563eb;
+      text-decoration: none;
+    }
+    .link-voltar:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card-login">
+    <div class="login-topo">
+      <div style="font-size: 2.5rem;">🔐</div>
+      <h1>Painel do Administrador</h1>
+      <p>Gerenciamento de Candidatos</p>
+    </div>
+
+    <!-- Dica para o professor / avaliador -->
+    <div class="dica-padrao">
+      💡 <strong>Acesso Padrão:</strong> Usuário: <code>admin</code> | Senha: <code>1234</code>
+    </div>
+
+    {% if erro %}
+    <div class="alerta-erro">
+      ⚠ {{ erro }}
+    </div>
+    {% endif %}
+
+    <form method="POST" action="/admin/login">
+      <div class="form-group">
+        <label for="username">Usuário:</label>
+        <input type="text" id="username" name="username" placeholder="admin" required autofocus>
+      </div>
+
+      <div class="form-group">
+        <label for="senha">Senha:</label>
+        <input type="password" id="senha" name="senha" placeholder="1234" required>
+      </div>
+
+      <button type="submit" class="btn-entrar">Entrar no Sistema</button>
+    </form>
+
+    <a href="/" class="link-voltar">⬅ Voltar para a Apuração</a>
+  </div>
+
+</body>
+</html>

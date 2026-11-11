@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Administração de Candidatos — Urna Eletrônica</title>
+  <style>
+    /* ─── Estilos do Painel Administrativo (Básico e Limpo) ─── */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      background-color: #f1f5f9;
+      color: #334155;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Barra de Navegação */
+    .navbar {
+      background-color: #1e3a8a;
+      color: white;
+      padding: 12px 24px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .nav-container {
+      max-width: 1000px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .nav-brand {
+      font-size: 1.15rem;
+      font-weight: bold;
+      color: white;
+      text-decoration: none;
+    }
+    .nav-brand span {
+      font-size: 0.85rem;
+      font-weight: normal;
+      color: #93c5fd;
+    }
+    .nav-links {
+      display: flex;
+      gap: 12px;
+    }
+    .nav-links a {
+      color: #e2e8f0;
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: bold;
+      padding: 6px 12px;
+      border-radius: 4px;
+      transition: background-color 0.2s;
+    }
+    .nav-links a:hover {
+      background-color: #2563eb;
+      color: white;
+    }
+    .nav-links a.active {
+      background-color: #1d4ed8;
+      color: white;
+    }
+
+    /* Conteúdo */
+    .container {
+      max-width: 1000px;
+      margin: 25px auto;
+      padding: 0 15px;
+      flex: 1;
+    }
+
+    .topo-painel {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    .topo-painel h1 {
+      font-size: 1.5rem;
+      color: #1e3a8a;
+    }
+    .acoes-topo {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      padding: 9px 16px;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: bold;
+      cursor: pointer;
+      border: none;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background-color 0.2s;
+    }
+    .btn-verde {
+      background-color: #16a34a;
+      color: white;
+    }
+    .btn-verde:hover {
+      background-color: #15803d;
+    }
+    .btn-cinza {
+      background-color: #64748b;
+      color: white;
+    }
+    .btn-cinza:hover {
+      background-color: #475569;
+    }
+    .btn-azul {
+      background-color: #2563eb;
+      color: white;
+      padding: 6px 12px;
+      font-size: 0.8rem;
+    }
+    .btn-azul:hover {
+      background-color: #1d4ed8;
+    }
+    .btn-vermelho {
+      background-color: #dc2626;
+      color: white;
+      padding: 6px 12px;
+      font-size: 0.8rem;
+    }
+    .btn-vermelho:hover {
+      background-color: #b91c1c;
+    }
+
+    .alerta-sucesso {
+      background-color: #dcfce7;
+      border: 1px solid #86efac;
+      color: #166534;
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      font-size: 0.9rem;
+      font-weight: bold;
+    }
+
+    .card-painel {
+      background: white;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .card-painel h2 {
+      font-size: 1.15rem;
+      color: #1e293b;
+      margin-bottom: 15px;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+    th {
+      background-color: #f8fafc;
+      color: #475569;
+      font-size: 0.85rem;
+      padding: 10px 12px;
+      border-bottom: 2px solid #cbd5e1;
+      text-transform: uppercase;
+    }
+    td {
+      padding: 12px;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 0.95rem;
+      vertical-align: middle;
+    }
+    tr:hover {
+      background-color: #f8fafc;
+    }
+
+    .foto-cand {
+      width: 44px;
+      height: 44px;
+      border-radius: 6px;
+      border: 1px solid #cbd5e1;
+      background-color: #f1f5f9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+      overflow: hidden;
+    }
+    .foto-cand img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .badge-num {
+      background-color: #0f172a;
+      color: white;
+      font-weight: bold;
+      padding: 4px 8px;
+      border-radius: 4px;
+      display: inline-block;
+    }
+    .coluna-acoes {
+      display: flex;
+      gap: 6px;
+    }
+
+    footer {
+      background-color: #ffffff;
+      border-top: 1px solid #cbd5e1;
+      padding: 14px;
+      text-align: center;
+      font-size: 0.8rem;
+      color: #64748b;
+      margin-top: 25px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Barra de Navegação -->
+  <header class="navbar">
+    <div class="nav-container">
+      <a href="/" class="nav-brand">🗳️ Urna Eletrônica <span>(Trabalho de Faculdade)</span></a>
+      <nav class="nav-links">
+        <a href="/votar">Votação</a>
+        <a href="/">Apuração</a>
+        <a href="/boletim">Boletim de Urna</a>
+        <a href="/admin" class="active">Painel Admin</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <div class="topo-painel">
+      <div>
+        <h1>🔐 Painel Administrativo</h1>
+        <p style="font-size: 0.85rem; color: #64748b;">Cadastro e edição de candidatos para a eleição</p>
+      </div>
+      <div class="acoes-topo">
+        <a href="/admin/candidatos/adicionar" class="btn btn-verde">➕ Cadastrar Candidato</a>
+        <a href="/admin/logout" class="btn btn-cinza">🚪 Sair</a>
+      </div>
+    </div>
+
+    {% if msg %}
+    <div class="alerta-sucesso">
+      ✔ {{ msg }}
+    </div>
+    {% endif %}
+
+    <div class="card-painel">
+      <h2>Lista de Candidatos Concorrentes</h2>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 60px;">Foto</th>
+            <th style="width: 80px;">Número</th>
+            <th>Nome</th>
+            <th>Partido</th>
+            <th>Vice</th>
+            <th style="width: 150px;">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in candidatos %}
+          <tr>
+            <td>
+              <div class="foto-cand">
+                {% if c.foto_path %}
+                  <img src="{{ c.foto_path }}" alt="{{ c.nome }}">
+                {% else %}
+                  {{ c.foto_char or '🗳️' }}
+                {% endif %}
+              </div>
+            </td>
+            <td>
+              <span class="badge-num">{{ c.numero }}</span>
+            </td>
+            <td><strong>{{ c.nome }}</strong></td>
+            <td>{{ c.partido }}</td>
+            <td>{{ c.vice or '-' }}</td>
+            <td>
+              <div class="coluna-acoes">
+                <a href="/admin/candidatos/editar/{{ c.numero }}" class="btn btn-azul">Editar</a>
+                <form method="POST" action="/admin/candidatos/excluir/{{ c.numero }}" style="display:inline;" onsubmit="return confirm('Deseja realmente excluir este candidato?');">
+                  <button type="submit" class="btn btn-vermelho">Excluir</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+
+  <footer>
+    <p>Painel Administrativo — Urna Eletrônica Universitária</p>
+  </footer>
+
+</body>
+</html>

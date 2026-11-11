@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Votação — Urna Eletrônica</title>
+  <style>
+    /* ─── Estilos Gerais e Básicos (Nível Iniciante / Trabalho de Faculdade) ─── */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      background-color: #f1f5f9;
+      color: #334155;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Barra de Navegação Superior */
+    .navbar {
+      background-color: #1e3a8a;
+      color: white;
+      padding: 12px 24px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .nav-container {
+      max-width: 1000px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .nav-brand {
+      font-size: 1.15rem;
+      font-weight: bold;
+      color: white;
+      text-decoration: none;
+    }
+    .nav-brand span {
+      font-size: 0.85rem;
+      font-weight: normal;
+      color: #93c5fd;
+    }
+    .nav-links {
+      display: flex;
+      gap: 12px;
+    }
+    .nav-links a {
+      color: #e2e8f0;
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: bold;
+      padding: 6px 12px;
+      border-radius: 4px;
+      transition: background-color 0.2s;
+    }
+    .nav-links a:hover {
+      background-color: #2563eb;
+      color: white;
+    }
+    .nav-links a.active {
+      background-color: #1d4ed8;
+      color: white;
+    }
+
+    /* Conteúdo Principal */
+    .container {
+      max-width: 900px;
+      margin: 25px auto;
+      padding: 0 15px;
+      flex: 1;
+    }
+
+    /* Cartão de Identificação do CPF */
+    .card-identificacao {
+      background: white;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 18px 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .card-identificacao h3 {
+      font-size: 1.1rem;
+      color: #1e3a8a;
+      margin-bottom: 8px;
+    }
+    .card-identificacao p {
+      font-size: 0.85rem;
+      color: #64748b;
+      margin-bottom: 12px;
+    }
+    .campo-cpf {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .campo-cpf label {
+      font-size: 0.95rem;
+      font-weight: bold;
+      color: #1e293b;
+    }
+    .campo-cpf input {
+      font-size: 1.1rem;
+      padding: 8px 14px;
+      border: 2px solid #94a3b8;
+      border-radius: 6px;
+      outline: none;
+      width: 200px;
+      letter-spacing: 1px;
+    }
+    .campo-cpf input:focus {
+      border-color: #2563eb;
+    }
+    .alerta-obrigatorio {
+      font-size: 0.85rem;
+      color: #b91c1c;
+      font-weight: bold;
+    }
+
+    /* Estrutura da Urna Eletrônica */
+    .urna-container {
+      background-color: #d1d5db;
+      border: 4px solid #9ca3af;
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      gap: 20px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    /* ─── TELA DA URNA (Esquerda) ─── */
+    .urna-tela {
+      background-color: #ffffff;
+      border: 2px solid #6b7280;
+      border-radius: 6px;
+      width: 480px;
+      min-height: 380px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+    }
+
+    .tela-cabecalho {
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 8px;
+    }
+    .tela-cabecalho h4 {
+      font-size: 0.85rem;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .tela-cabecalho h2 {
+      font-size: 1.3rem;
+      color: #0f172a;
+      margin-top: 2px;
+    }
+
+    /* Corpo dos dados do candidato */
+    .tela-corpo {
+      flex: 1;
+      padding: 14px 0;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .dados-candidato {
+      flex: 1;
+    }
+    .linha-dado {
+      margin-bottom: 10px;
+      font-size: 0.95rem;
+    }
+    .linha-dado .rotulo {
+      font-weight: bold;
+      color: #475569;
+    }
+    .linha-dado .valor {
+      font-size: 1.05rem;
+      font-weight: bold;
+      color: #0f172a;
+      margin-left: 6px;
+    }
+
+    /* Caixas dos Dígitos do Número */
+    .caixas-numero {
+      display: flex;
+      gap: 8px;
+      margin-top: 6px;
+      margin-bottom: 12px;
+    }
+    .caixa-digito {
+      width: 40px;
+      height: 48px;
+      border: 2px solid #334155;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+      font-weight: bold;
+      color: #0f172a;
+      background-color: #f8fafc;
+    }
+    .caixa-digito.pisca {
+      border-color: #2563eb;
+      animation: piscar 1s infinite;
+    }
+    @keyframes piscar {
+      0%, 100% { background-color: #f8fafc; }
+      50% { background-color: #e0e7ff; }
+    }
+
+    /* Foto do Candidato na Tela */
+    .tela-foto {
+      width: 110px;
+      height: 130px;
+      border: 1px solid #cbd5e1;
+      background-color: #f8fafc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      border-radius: 4px;
+    }
+    .tela-foto img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .tela-foto .emoji-foto {
+      font-size: 3.5rem;
+    }
+
+    /* Rodapé da tela com as instruções */
+    .tela-rodape {
+      border-top: 2px solid #334155;
+      padding-top: 8px;
+      font-size: 0.75rem;
+      color: #334155;
+      line-height: 1.4;
+    }
+
+    /* Mensagem especial de FIM e BRANCO */
+    .tela-fim {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #ffffff;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      z-index: 10;
+    }
+    .tela-fim.ativa {
+      display: flex;
+    }
+    .tela-fim h1 {
+      font-size: 4rem;
+      color: #0f172a;
+      letter-spacing: 4px;
+    }
+    .tela-fim p {
+      font-size: 1.1rem;
+      color: #16a34a;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+
+    .msg-grande {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #0f172a;
+      margin-top: 20px;
+    }
+    .msg-nulo {
+      font-size: 1.4rem;
+      font-weight: bold;
+      color: #dc2626;
+      margin-top: 20px;
+    }
+
+    /* ─── TECLADO DA URNA (Direita) ─── */
+    .urna-teclado {
+      background-color: #1e293b;
+      border: 3px solid #0f172a;
+      border-radius: 8px;
+      padding: 16px;
+      width: 280px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .teclado-topo {
+      text-align: center;
+      color: white;
+      font-size: 0.8rem;
+      font-weight: bold;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+      border-bottom: 1px solid #334155;
+      padding-bottom: 6px;
+    }
+
+    /* Grid numérico */
+    .grid-numeros {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    .btn-num {
+      background-color: #0f172a;
+      color: white;
+      font-size: 1.4rem;
+      font-weight: bold;
+      border: 1px solid #334155;
+      border-radius: 4px;
+      padding: 12px 0;
+      cursor: pointer;
+      box-shadow: 0 3px 0 #020617;
+      transition: all 0.1s;
+    }
+    .btn-num:hover {
+      background-color: #1e293b;
+    }
+    .btn-num:active {
+      transform: translateY(2px);
+      box-shadow: 0 1px 0 #020617;
+    }
+    .btn-num-zero {
+      grid-column: 2;
+    }
+
+    /* Botões de Ação */
+    .grid-acoes {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      align-items: end;
+    }
+    .btn-acao {
+      border: none;
+      border-radius: 4px;
+      font-weight: bold;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      cursor: pointer;
+      padding: 12px 4px;
+      text-align: center;
+      transition: all 0.1s;
+    }
+    .btn-branco {
+      background-color: #ffffff;
+      color: #0f172a;
+      border: 1px solid #94a3b8;
+      box-shadow: 0 3px 0 #cbd5e1;
+    }
+    .btn-corrige {
+      background-color: #f97316;
+      color: #0f172a;
+      box-shadow: 0 3px 0 #c2410c;
+    }
+    .btn-confirma {
+      background-color: #22c55e;
+      color: #0f172a;
+      font-size: 0.85rem;
+      padding: 18px 4px;
+      box-shadow: 0 4px 0 #15803d;
+    }
+    .btn-acao:active {
+      transform: translateY(2px);
+    }
+
+    /* Rodapé da Página */
+    footer {
+      background-color: #ffffff;
+      border-top: 1px solid #cbd5e1;
+      padding: 14px;
+      text-align: center;
+      font-size: 0.8rem;
+      color: #64748b;
+      margin-top: 25px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Barra de Navegação Superior -->
+  <header class="navbar">
+    <div class="nav-container">
+      <a href="/" class="nav-brand">🗳️ Urna Eletrônica <span>(Trabalho de Faculdade)</span></a>
+      <nav class="nav-links">
+        <a href="/votar" class="active">Votação</a>
+        <a href="/">Apuração</a>
+        <a href="/boletim">Boletim de Urna</a>
+        <a href="/admin">Painel Admin</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Conteúdo Principal -->
+  <main class="container">
+
+    <!-- 1. IDENTIFICAÇÃO DO ELEITOR (CPF OBRIGATÓRIO) -->
+    <section class="card-identificacao">
+      <h3>1. Identificação do Eleitor</h3>
+      <p>Conforme as regras do sistema eleitoral, informe o CPF do eleitor antes de votar. Cada CPF só pode registrar um voto.</p>
+      <div class="campo-cpf">
+        <label for="cpf">CPF do Eleitor:</label>
+        <input 
+          type="text" 
+          id="cpf" 
+          placeholder="000.000.000-00" 
+          maxlength="14" 
+          oninput="mascaraCPF(this)"
+          autocomplete="off"
+        >
+        <span class="alerta-obrigatorio">* Obrigatório para votar</span>
+      </div>
+    </section>
+
+    <!-- 2. URNA ELETRÔNICA SIMULADA -->
+    <section class="urna-container">
+
+      <!-- TELA DA URNA -->
+      <div class="urna-tela" id="urnaTela">
+
+        <!-- Tela de FIM (aparece após confirmação) -->
+        <div class="tela-fim" id="telaFim">
+          <h1>FIM</h1>
+          <p>✔ VOTO GRAVADO COM SUCESSO!</p>
+        </div>
+
+        <!-- Cabeçalho da Tela -->
+        <div class="tela-cabecalho">
+          <h4>SEU VOTO PARA</h4>
+          <h2>Prefeito</h2>
+        </div>
+
+        <!-- Corpo dos dados do candidato -->
+        <div class="tela-corpo" id="telaCorpo">
+          <div class="dados-candidato">
+            <div class="linha-dado">
+              <span class="rotulo">Número:</span>
+              <div class="caixas-numero">
+                <div class="caixa-digito pisca" id="digito0"></div>
+                <div class="caixa-digito" id="digito1"></div>
+              </div>
+            </div>
+
+            <!-- Informações exibidas quando os números forem digitados -->
+            <div id="infoCandidato" style="display: none;">
+              <div class="linha-dado">
+                <span class="rotulo">Nome:</span>
+                <span class="valor" id="nomeCandidato">--</span>
+              </div>
+              <div class="linha-dado">
+                <span class="rotulo">Partido:</span>
+                <span class="valor" id="partidoCandidato">--</span>
+              </div>
+              <div class="linha-dado" id="linhaVice">
+                <span class="rotulo">Vice-Prefeito:</span>
+                <span class="valor" id="viceCandidato">--</span>
+              </div>
+            </div>
+
+            <!-- Mensagem para voto em branco ou nulo -->
+            <div id="msgEspecial" style="display: none;"></div>
+          </div>
+
+          <!-- Foto ou Emoji do Candidato -->
+          <div class="tela-foto" id="quadroFoto" style="display: none;">
+            <div id="fotoConteudo" class="emoji-foto">🗳️</div>
+          </div>
+        </div>
+
+        <!-- Instruções no Rodapé da Tela -->
+        <div class="tela-rodape">
+          Aperte a tecla:<br>
+          <strong>VERDE</strong> para <strong>CONFIRMAR</strong> este voto<br>
+          <strong>LARANJA</strong> para <strong>REINICIAR</strong> este voto
+        </div>
+
+      </div>
+
+      <!-- TECLADO DA URNA -->
+      <div class="urna-teclado">
+        <div class="teclado-topo">JUSTIÇA ELEITORAL</div>
+
+        <!-- Números 1 a 9 e 0 -->
+        <div class="grid-numeros">
+          <button class="btn-num" onclick="digitar('1')">1</button>
+          <button class="btn-num" onclick="digitar('2')">2</button>
+          <button class="btn-num" onclick="digitar('3')">3</button>
+          <button class="btn-num" onclick="digitar('4')">4</button>
+          <button class="btn-num" onclick="digitar('5')">5</button>
+          <button class="btn-num" onclick="digitar('6')">6</button>
+          <button class="btn-num" onclick="digitar('7')">7</button>
+          <button class="btn-num" onclick="digitar('8')">8</button>
+          <button class="btn-num" onclick="digitar('9')">9</button>
+          <button class="btn-num btn-num-zero" onclick="digitar('0')">0</button>
+        </div>
+
+        <!-- Botões de Ação -->
+        <div class="grid-acoes">
+          <button class="btn-acao btn-branco" onclick="votarBranco()">BRANCO</button>
+          <button class="btn-acao btn-corrige" onclick="corrigir()">CORRIGE</button>
+          <button class="btn-acao btn-confirma" onclick="confirmarVoto()">CONFIRMA</button>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Rodapé do Site -->
+  <footer>
+    <p>Urna Eletrônica Universitária — Projeto para Trabalho de Faculdade • Sigilo do voto garantido</p>
+  </footer>
+
+  <!-- ─── CÓDIGO JAVASCRIPT (Nível Iniciante e Bem Comentado) ─── -->
+  <script>
+    // Variáveis de controle do estado da urna
+    let numeroDigitado = '';
+    let ehVotoBranco = false;
+    let listaCandidatos = [];
+
+    // Carrega a lista de candidatos cadastrados na API
+    async function carregarCandidatos() {
+      try {
+        const resposta = await fetch('/api/candidatos');
+        listaCandidatos = await resposta.json();
+      } catch (erro) {
+        console.error('Erro ao buscar candidatos:', erro);
+      }
+    }
+
+    // ─── Máscara de formatação de CPF: 000.000.000-00 ───
+    function mascaraCPF(input) {
+      let valor = input.value.replace(/\D/g, ''); // Deixa apenas números
+      if (valor.length > 11) valor = valor.slice(0, 11);
+
+      if (valor.length > 9) {
+        input.value = valor.replace(/^(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
+      } else if (valor.length > 6) {
+        input.value = valor.replace(/^(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3');
+      } else if (valor.length > 3) {
+        input.value = valor.replace(/^(\d{3})(\d{1,3})/, '$1.$2');
+      } else {
+        input.value = valor;
+      }
+    }
+
+    // ─── Algoritmo Oficial de Validação do CPF ───
+    function validarCPF(cpf) {
+      cpf = cpf.replace(/\D/g, '');
+      if (cpf.length !== 11) return false;
+      if (/^(\d)\1{10}$/.test(cpf)) return false; // Bloqueia 111.111.111-11, etc.
+
+      // Validação do 1º dígito verificador
+      let soma = 0;
+      for (let i = 0; i < 9; i++) {
+        soma += parseInt(cpf.charAt(i)) * (10 - i);
+      }
+      let resto = (soma * 10) % 11;
+      if (resto === 10 || resto === 11) resto = 0;
+      if (resto !== parseInt(cpf.charAt(9))) return false;
+
+      // Validação do 2º dígito verificador
+      soma = 0;
+      for (let i = 0; i < 10; i++) {
+        soma += parseInt(cpf.charAt(i)) * (11 - i);
+      }
+      resto = (soma * 10) % 11;
+      if (resto === 10 || resto === 11) resto = 0;
+      if (resto !== parseInt(cpf.charAt(10))) return false;
+
+      return true;
+    }
+
+    // ─── Tocar o som característico de confirmação da Urna ───
+    function tocarSomUrna() {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(440, ctx.currentTime);
+        osc.frequency.setValueAtTime(880, ctx.currentTime + 0.15);
+
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.6);
+
+        osc.start();
+        osc.stop(ctx.currentTime + 0.6);
+      } catch (e) {
+        // Ignora caso o navegador bloqueie áudio
+      }
+    }
+
+    // ─── Atualiza a tela da urna com os dígitos e dados do candidato ───
+    function atualizarTela() {
+      const box0 = document.getElementById('digito0');
+      const box1 = document.getElementById('digito1');
+      const info = document.getElementById('infoCandidato');
+      const msg = document.getElementById('msgEspecial');
+      const quadroFoto = document.getElementById('quadroFoto');
+      const fotoConteudo = document.getElementById('fotoConteudo');
+
+      if (ehVotoBranco) {
+        box0.textContent = '';
+        box1.textContent = '';
+        box0.className = 'caixa-digito';
+        box1.className = 'caixa-digito';
+        info.style.display = 'none';
+        quadroFoto.style.display = 'none';
+        msg.style.display = 'block';
+        msg.innerHTML = '<div class="msg-grande">VOTO EM BRANCO</div>';
+        return;
+      }
+
+      // Preenche os dígitos na tela
+      box0.textContent = numeroDigitado[0] || '';
+      box1.textContent = numeroDigitado[1] || '';
+
+      // Atualiza qual caixinha pisca esperando número
+      if (numeroDigitado.length === 0) {
+        box0.className = 'caixa-digito pisca';
+        box1.className = 'caixa-digito';
+      } else if (numeroDigitado.length === 1) {
+        box0.className = 'caixa-digito';
+        box1.className = 'caixa-digito pisca';
+      } else {
+        box0.className = 'caixa-digito';
+        box1.className = 'caixa-digito';
+      }
+
+      // Se digitou os 2 números, procura o candidato
+      if (numeroDigitado.length === 2) {
+        const candidato = listaCandidatos.find(c => c.numero === numeroDigitado);
+
+        if (candidato) {
+          // Candidato encontrado!
+          document.getElementById('nomeCandidato').textContent = candidato.nome;
+          document.getElementById('partidoCandidato').textContent = candidato.partido;
+
+          const linhaVice = document.getElementById('linhaVice');
+          if (candidato.vice) {
+            linhaVice.style.display = 'block';
+            document.getElementById('viceCandidato').textContent = candidato.vice;
+          } else {
+            linhaVice.style.display = 'none';
+          }
+
+          // Exibe a foto ou emoji
+          if (candidato.foto_path) {
+            fotoConteudo.innerHTML = `<img src="${candidato.foto_path}" alt="${candidato.nome}">`;
+          } else {
+            fotoConteudo.innerHTML = candidato.foto_char || '🗳️';
+          }
+
+          info.style.display = 'block';
+          quadroFoto.style.display = 'flex';
+          msg.style.display = 'none';
+        } else {
+          // Candidato não existe -> Voto Nulo
+          info.style.display = 'none';
+          quadroFoto.style.display = 'none';
+          msg.style.display = 'block';
+          msg.innerHTML = '<div class="msg-nulo">NÚMERO ERRADO<br><small style="font-size:1rem;color:#64748b;">VOTO NULO</small></div>';
+        }
+      } else {
+        // Menos de 2 números digitados
+        info.style.display = 'none';
+        quadroFoto.style.display = 'none';
+        msg.style.display = 'none';
+      }
+    }
+
+    // ─── Clique em um número do teclado ───
+    function digitar(n) {
+      if (ehVotoBranco) return; // Se clicou em branco antes, precisa corrigir primeiro
+      if (numeroDigitado.length < 2) {
+        numeroDigitado += n;
+        atualizarTela();
+      }
+    }
+
+    // ─── Botão CORRIGE ───
+    function corrigir() {
+      numeroDigitado = '';
+      ehVotoBranco = false;
+      atualizarTela();
+    }
+
+    // ─── Botão BRANCO ───
+    function votarBranco() {
+      if (numeroDigitado.length === 0) {
+        ehVotoBranco = true;
+        atualizarTela();
+      } else {
+        alert('Para votar em BRANCO, o número deve estar vazio. Aperte CORRIGE primeiro!');
+      }
+    }
+
+    // ─── Botão CONFIRMA (Com Validação Obrigatória de CPF) ───
+    async function confirmarVoto() {
+      const campoCpf = document.getElementById('cpf');
+      const cpfLimpo = campoCpf.value.replace(/\D/g, '');
+
+      // 1. REGRA PRINCIPAL: EXIGE O CPF
+      if (!cpfLimpo) {
+        alert('Atenção: É obrigatório informar o CPF do eleitor antes de confirmar o voto!');
+        campoCpf.focus();
+        return;
+      }
+
+      // 2. VALIDA OS DÍGITOS DO CPF
+      if (cpfLimpo.length !== 11 || !validarCPF(cpfLimpo)) {
+        alert('CPF inválido! Por favor, digite um CPF válido com 11 dígitos.');
+        campoCpf.focus();
+        return;
+      }
+
+      // 3. VERIFICA SE O ELEITOR DIGITOU O NÚMERO OU VOTOU EM BRANCO
+      let dadosVoto = null;
+
+      if (ehVotoBranco) {
+        dadosVoto = {
+          numero_cand: '00',
+          nome_cand: 'VOTO EM BRANCO',
+          partido_cand: 'BRANCO'
+        };
+      } else if (numeroDigitado.length === 2) {
+        const candidato = listaCandidatos.find(c => c.numero === numeroDigitado);
+        if (candidato) {
+          dadosVoto = {
+            numero_cand: candidato.numero,
+            nome_cand: candidato.nome,
+            partido_cand: candidato.partido
+          };
+        } else {
+          // Voto em número inexistente computa como Nulo
+          dadosVoto = {
+            numero_cand: numeroDigitado,
+            nome_cand: 'VOTO NULO',
+            partido_cand: 'NULO'
+          };
+        }
+      } else {
+        alert('Por favor, digite os 2 números do candidato ou aperte BRANCO!');
+        return;
+      }
+
+      // 4. CONFIRMAÇÃO DO USUÁRIO
+      const confirmou = confirm('Deseja realmente confirmar o seu voto?');
+      if (!confirmou) return;
+
+      // 5. ENVIA O VOTO PARA O BACKEND EM PYTHON (FLASK)
+      try {
+        const resposta = await fetch('/api/votar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            cpf_eleitor: cpfLimpo,
+            voto: dadosVoto
+          })
+        });
+
+        const resultado = await resposta.json();
+
+        if (resultado.success) {
+          // Sucesso: Toca som e mostra a tela de FIM
+          tocarSomUrna();
+          document.getElementById('telaFim').classList.add('ativa');
+
+          // Limpa o CPF para o próximo eleitor
+          campoCpf.value = '';
+
+          // Aguarda 2.5 segundos para resetar a tela da urna para o próximo voto
+          setTimeout(() => {
+            document.getElementById('telaFim').classList.remove('ativa');
+            corrigir();
+          }, 2500);
+
+        } else {
+          // Erro (ex: CPF já votou nesta eleição)
+          alert('Erro ao registrar voto: ' + resultado.error);
+        }
+      } catch (erro) {
+        alert('Falha na comunicação com o servidor. Verifique se o app.py está rodando.');
+        console.error(erro);
+      }
+    }
+
+    // ─── Suporte ao Teclado Físico do Computador ───
+    document.addEventListener('keydown', function(evento) {
+      // Se estiver digitando no campo de CPF, não aciona as teclas da urna
+      if (document.activeElement === document.getElementById('cpf')) return;
+
+      if (evento.key >= '0' && evento.key <= '9') {
+        digitar(evento.key);
+      } else if (evento.key === 'Backspace' || evento.key === 'Escape') {
+        corrigir();
+      } else if (evento.key === 'Enter') {
+        confirmarVoto();
+      }
+    });
+
+    // Inicialização ao carregar a página
+    carregarCandidatos();
+    atualizarTela();
+  </script>
+
+</body>
+</html>

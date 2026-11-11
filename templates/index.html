@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Apuração dos Votos — Urna Eletrônica</title>
+  <style>
+    /* ─── Estilos Gerais (Nível Iniciante / Trabalho de Faculdade) ─── */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      background-color: #f1f5f9;
+      color: #334155;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Barra de Navegação */
+    .navbar {
+      background-color: #1e3a8a;
+      color: white;
+      padding: 12px 24px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .nav-container {
+      max-width: 1000px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .nav-brand {
+      font-size: 1.15rem;
+      font-weight: bold;
+      color: white;
+      text-decoration: none;
+    }
+    .nav-brand span {
+      font-size: 0.85rem;
+      font-weight: normal;
+      color: #93c5fd;
+    }
+    .nav-links {
+      display: flex;
+      gap: 12px;
+    }
+    .nav-links a {
+      color: #e2e8f0;
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: bold;
+      padding: 6px 12px;
+      border-radius: 4px;
+      transition: background-color 0.2s;
+    }
+    .nav-links a:hover {
+      background-color: #2563eb;
+      color: white;
+    }
+    .nav-links a.active {
+      background-color: #1d4ed8;
+      color: white;
+    }
+
+    /* Conteúdo Principal */
+    .container {
+      max-width: 1000px;
+      margin: 25px auto;
+      padding: 0 15px;
+      flex: 1;
+    }
+
+    /* Cabeçalho da Página */
+    .pagina-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    .pagina-header h1 {
+      font-size: 1.6rem;
+      color: #1e3a8a;
+    }
+    .ultima-atualizacao {
+      font-size: 0.85rem;
+      color: #64748b;
+    }
+
+    /* Cards de Resumo */
+    .grid-resumo {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+    .card-resumo {
+      background: white;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 16px 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .card-resumo h4 {
+      font-size: 0.85rem;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .card-resumo .valor-destaque {
+      font-size: 1.8rem;
+      font-weight: bold;
+      color: #0f172a;
+    }
+    .card-resumo .sub-valor {
+      font-size: 0.8rem;
+      color: #16a34a;
+      margin-top: 4px;
+      font-weight: bold;
+    }
+
+    /* Tabela de Resultados */
+    .card-tabela {
+      background: white;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 25px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .card-tabela h2 {
+      font-size: 1.2rem;
+      color: #1e293b;
+      margin-bottom: 15px;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+    th {
+      background-color: #f8fafc;
+      color: #475569;
+      font-size: 0.85rem;
+      padding: 10px 12px;
+      border-bottom: 2px solid #cbd5e1;
+      text-transform: uppercase;
+    }
+    td {
+      padding: 12px;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 0.95rem;
+      vertical-align: middle;
+    }
+    tr:hover {
+      background-color: #f8fafc;
+    }
+
+    .posicao {
+      font-weight: bold;
+      font-size: 1.1rem;
+      color: #1e3a8a;
+      width: 40px;
+      text-align: center;
+    }
+    .cand-info-td {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .foto-mini {
+      width: 44px;
+      height: 44px;
+      border-radius: 6px;
+      background-color: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .foto-mini img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .cand-nome {
+      font-weight: bold;
+      color: #0f172a;
+    }
+    .cand-vice {
+      font-size: 0.8rem;
+      color: #64748b;
+    }
+    .numero-badge {
+      display: inline-block;
+      background-color: #0f172a;
+      color: white;
+      font-weight: bold;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 0.9rem;
+    }
+
+    /* Barra de Progresso Simples em CSS */
+    .barra-container {
+      background-color: #e2e8f0;
+      border-radius: 4px;
+      height: 14px;
+      width: 100%;
+      max-width: 180px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+    .barra-preenchimento {
+      background-color: #2563eb;
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.4s ease;
+    }
+    .porcentagem-texto {
+      font-weight: bold;
+      color: #1e293b;
+    }
+
+    /* Votos Brancos e Nulos */
+    .card-outros {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid #e2e8f0;
+    }
+    .outro-item {
+      font-size: 0.9rem;
+      color: #475569;
+    }
+    .outro-item strong {
+      color: #0f172a;
+      font-size: 1rem;
+    }
+
+    /* Botões de Ação */
+    .botoes-acao {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .btn {
+      padding: 10px 18px;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: bold;
+      cursor: pointer;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      text-decoration: none;
+      transition: background-color 0.2s;
+    }
+    .btn-azul {
+      background-color: #2563eb;
+      color: white;
+    }
+    .btn-azul:hover {
+      background-color: #1d4ed8;
+    }
+    .btn-verde {
+      background-color: #16a34a;
+      color: white;
+    }
+    .btn-verde:hover {
+      background-color: #15803d;
+    }
+    .btn-vermelho {
+      background-color: #dc2626;
+      color: white;
+    }
+    .btn-vermelho:hover {
+      background-color: #b91c1c;
+    }
+
+    /* Rodapé */
+    footer {
+      background-color: #ffffff;
+      border-top: 1px solid #cbd5e1;
+      padding: 14px;
+      text-align: center;
+      font-size: 0.8rem;
+      color: #64748b;
+      margin-top: 25px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Barra de Navegação -->
+  <header class="navbar">
+    <div class="nav-container">
+      <a href="/" class="nav-brand">🗳️ Urna Eletrônica <span>(Trabalho de Faculdade)</span></a>
+      <nav class="nav-links">
+        <a href="/votar">Votação</a>
+        <a href="/" class="active">Apuração</a>
+        <a href="/boletim">Boletim de Urna</a>
+        <a href="/admin">Painel Admin</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Conteúdo Principal -->
+  <main class="container">
+
+    <!-- Cabeçalho com Título e Botão de Atualizar -->
+    <div class="pagina-header">
+      <div>
+        <h1>📊 Apuração dos Votos</h1>
+        <p class="ultima-atualizacao">Última atualização: <span id="dataAtualizacao">{{ dados.ultima_atualizacao }}</span></p>
+      </div>
+      <div>
+        <button class="btn btn-azul" onclick="atualizarDados()">🔄 Atualizar Dados</button>
+      </div>
+    </div>
+
+    <!-- Cards de Resumo da Eleição -->
+    <div class="grid-resumo">
+      <div class="card-resumo">
+        <h4>Total de Votos</h4>
+        <div class="valor-destaque" id="totalVotos">{{ dados.total_votos }}</div>
+        <div class="sub-valor">Votos registrados na urna</div>
+      </div>
+
+      <div class="card-resumo">
+        <h4>Comparecimento (CPFs)</h4>
+        <div class="valor-destaque" id="totalComparecimento">{{ dados.total_comparecimento }}</div>
+        <div class="sub-valor">Eleitores identificados</div>
+      </div>
+
+      <div class="card-resumo">
+        <h4>Candidato Líder</h4>
+        <div class="valor-destaque" id="nomeLider" style="font-size: 1.4rem;">
+          {% if dados.lider %}
+            {{ dados.lider.nome }}
+          {% else %}
+            Aguardando votos...
+          {% endif %}
+        </div>
+        <div class="sub-valor" id="percLider">
+          {% if dados.lider %}
+            {{ dados.lider.percentual_formatado }} dos votos
+          {% else %}
+            0%
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabela de Candidatos e Resultados -->
+    <div class="card-tabela">
+      <h2>Resultado da Votação para Prefeito</h2>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 50px;">Pos.</th>
+            <th>Candidato</th>
+            <th>Número</th>
+            <th>Partido</th>
+            <th>Votos</th>
+            <th style="width: 220px;">Porcentagem</th>
+          </tr>
+        </thead>
+        <tbody id="tabelaCorpo">
+          {% for c in dados.candidatos %}
+          <tr>
+            <td class="posicao">{{ c.posicao }}º</td>
+            <td>
+              <div class="cand-info-td">
+                <div class="foto-mini">
+                  {% if c.foto_path %}
+                    <img src="{{ c.foto_path }}" alt="{{ c.nome }}">
+                  {% else %}
+                    {{ c.foto_char }}
+                  {% endif %}
+                </div>
+                <div>
+                  <div class="cand-nome">{{ c.nome }}</div>
+                  {% if c.vice %}
+                    <div class="cand-vice">Vice: {{ c.vice }}</div>
+                  {% endif %}
+                </div>
+              </div>
+            </td>
+            <td>
+              <span class="numero-badge">{{ c.numero }}</span>
+            </td>
+            <td>{{ c.partido }}</td>
+            <td><strong>{{ c.votos }}</strong></td>
+            <td>
+              <span class="porcentagem-texto">{{ c.percentual_formatado }}</span>
+              <div class="barra-container">
+                <div class="barra-preenchimento" style="width: {{ c.percentual }}%; background-color: {{ c.cor }};"></div>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <!-- Resumo de votos brancos e nulos -->
+      <div class="card-outros">
+        <div class="outro-item">
+          Votos em Branco: <strong id="votosBrancos">{{ dados.votos_brancos }}</strong>
+        </div>
+        <div class="outro-item">
+          Votos Nulos: <strong id="votosNulos">{{ dados.votos_nulos }}</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- Botões de Ações Adicionais -->
+    <div class="botoes-acao">
+      <a href="/votar" class="btn btn-verde">🗳️ Ir para a Urna e Votar</a>
+      <a href="/boletim" class="btn btn-azul">📄 Emitir Boletim de Urna</a>
+      <button class="btn btn-vermelho" onclick="zerarEleicao()">⚠️ Resetar / Zerar Urna</button>
+    </div>
+
+  </main>
+
+  <!-- Rodapé -->
+  <footer>
+    <p>Urna Eletrônica Universitária — Sistema de Apuração Eleitoral • Trabalho de Faculdade</p>
+  </footer>
+
+  <!-- ─── JAVASCRIPT BÁSICO E INICIANTE ─── -->
+  <script>
+    // Função para buscar dados atualizados da apuração no backend Flask
+    async function atualizarDados() {
+      try {
+        const resposta = await fetch('/api/apuracao');
+        const dados = await resposta.json();
+
+        // 1. Atualiza os cards de resumo
+        document.getElementById('totalVotos').textContent = dados.total_votos;
+        document.getElementById('totalComparecimento').textContent = dados.total_comparecimento;
+        document.getElementById('dataAtualizacao').textContent = dados.ultima_atualizacao;
+        document.getElementById('votosBrancos').textContent = dados.votos_brancos;
+        document.getElementById('votosNulos').textContent = dados.votos_nulos;
+
+        if (dados.lider) {
+          document.getElementById('nomeLider').textContent = dados.lider.nome;
+          document.getElementById('percLider').textContent = dados.lider.percentual_formatado + ' dos votos';
+        } else {
+          document.getElementById('nomeLider').textContent = 'Aguardando votos...';
+          document.getElementById('percLider').textContent = '0%';
+        }
+
+        // 2. Atualiza as linhas da tabela de candidatos
+        let linhasHTML = '';
+        for (let i = 0; i < dados.candidatos.length; i++) {
+          const c = dados.candidatos[i];
+          const fotoHTML = c.foto_path ? 
+            `<img src="${c.foto_path}" alt="${c.nome}">` : 
+            (c.foto_char || '🗳️');
+
+          const viceHTML = c.vice ? `<div class="cand-vice">Vice: ${c.vice}</div>` : '';
+
+          linhasHTML += `
+            <tr>
+              <td class="posicao">${c.posicao}º</td>
+              <td>
+                <div class="cand-info-td">
+                  <div class="foto-mini">${fotoHTML}</div>
+                  <div>
+                    <div class="cand-nome">${c.nome}</div>
+                    ${viceHTML}
+                  </div>
+                </div>
+              </td>
+              <td><span class="numero-badge">${c.numero}</span></td>
+              <td>${c.partido}</td>
+              <td><strong>${c.votos}</strong></td>
+              <td>
+                <span class="porcentagem-texto">${c.percentual_formatado}</span>
+                <div class="barra-container">
+                  <div class="barra-preenchimento" style="width: ${c.percentual}%; background-color: ${c.cor || '#2563eb'};"></div>
+                </div>
+              </td>
+            </tr>
+          `;
+        }
+        document.getElementById('tabelaCorpo').innerHTML = linhasHTML;
+
+      } catch (erro) {
+        console.error('Erro ao atualizar dados da apuração:', erro);
+      }
+    }
+
+    // Função para resetar os votos (zerar eleição para reiniciar teste)
+    async function zerarEleicao() {
+      const confirmou = confirm('Atenção: Deseja realmente zerar todos os votos e eleitores desta eleição? Essa ação apagará os dados para uma nova simulação.');
+      if (!confirmou) return;
+
+      try {
+        const resposta = await fetch('/api/zerar', { method: 'POST' });
+        const res = await resposta.json();
+        if (res.success) {
+          alert('Urna resetada com sucesso! Todos os votos foram zerados.');
+          atualizarDados();
+        } else {
+          alert('Erro ao resetar: ' + res.error);
+        }
+      } catch (erro) {
+        alert('Falha ao comunicar com o servidor.');
+      }
+    }
+
+    // Atualização automática a cada 5 segundos
+    setInterval(atualizarDados, 5000);
+  </script>
+
+</body>
+</html>
