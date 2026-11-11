@@ -351,17 +351,19 @@ def rota_api_votar():
         "total_votos": len(votos)
     })
 
-@app.route("/api/zerar", methods=["POST"])
-def rota_api_zerar():
-    """Zera a votação (reseta votos e eleitores para novo teste)."""
-    salvar_json(ARQUIVO_VOTOS, [])
-    salvar_json(ARQUIVO_ELEITORES, [])
-    return jsonify({"success": True, "message": "Urna zerada com sucesso!"})
-
 # ─── Painel Administrativo ───────────────────────────────────────────────────
 
 def admin_logado():
     return session.get("admin_logado") is True
+
+@app.route("/api/zerar", methods=["POST"])
+def rota_api_zerar():
+    """Zera a votação (apenas o administrador logado pode executar)."""
+    if not admin_logado():
+        return jsonify({"success": False, "error": "Acesso restrito ao administrador."}), 403
+    salvar_json(ARQUIVO_VOTOS, [])
+    salvar_json(ARQUIVO_ELEITORES, [])
+    return jsonify({"success": True, "message": "Urna zerada com sucesso!"})
 
 @app.route("/admin/login", methods=["GET", "POST"])
 def rota_admin_login():

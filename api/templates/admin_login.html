@@ -131,11 +131,6 @@
       <p>Gerenciamento de Candidatos</p>
     </div>
 
-    <!-- Dica para o professor / avaliador -->
-    <div class="dica-padrao">
-      💡 <strong>Acesso Padrão:</strong> Usuário: <code>admin</code> | Senha: <code>1234</code>
-    </div>
-
     {% if erro %}
     <div class="alerta-erro">
       ⚠ {{ erro }}
@@ -145,12 +140,12 @@
     <form method="POST" action="/admin/login">
       <div class="form-group">
         <label for="username">Usuário:</label>
-        <input type="text" id="username" name="username" placeholder="admin" required autofocus>
+        <input type="text" id="username" name="username" placeholder="Digite seu usuário" required autofocus>
       </div>
 
       <div class="form-group">
         <label for="senha">Senha:</label>
-        <input type="password" id="senha" name="senha" placeholder="1234" required>
+        <input type="password" id="senha" name="senha" placeholder="Digite sua senha" required>
       </div>
 
       <button type="submit" class="btn-entrar">Entrar no Sistema</button>

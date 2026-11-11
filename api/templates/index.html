@@ -439,7 +439,6 @@
     <div class="botoes-acao">
       <a href="/votar" class="btn btn-verde">🗳️ Ir para a Urna e Votar</a>
       <a href="/boletim" class="btn btn-azul">📄 Emitir Boletim de Urna</a>
-      <button class="btn btn-vermelho" onclick="zerarEleicao()">⚠️ Resetar / Zerar Urna</button>
     </div>
 
   </main>
@@ -510,25 +509,6 @@
 
       } catch (erro) {
         console.error('Erro ao atualizar dados da apuração:', erro);
-      }
-    }
-
-    // Função para resetar os votos (zerar eleição para reiniciar teste)
-    async function zerarEleicao() {
-      const confirmou = confirm('Atenção: Deseja realmente zerar todos os votos e eleitores desta eleição? Essa ação apagará os dados para uma nova simulação.');
-      if (!confirmou) return;
-
-      try {
-        const resposta = await fetch('/api/zerar', { method: 'POST' });
-        const res = await resposta.json();
-        if (res.success) {
-          alert('Urna resetada com sucesso! Todos os votos foram zerados.');
-          atualizarDados();
-        } else {
-          alert('Erro ao resetar: ' + res.error);
-        }
-      } catch (erro) {
-        alert('Falha ao comunicar com o servidor.');
       }
     }
 

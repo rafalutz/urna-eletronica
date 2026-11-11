@@ -255,6 +255,7 @@
       </div>
       <div class="acoes-topo">
         <a href="/admin/candidatos/adicionar" class="btn btn-verde">➕ Cadastrar Candidato</a>
+        <button class="btn btn-vermelho" style="padding: 9px 16px; font-size: 0.9rem;" onclick="zerarEleicao()">⚠️ Resetar Eleição</button>
         <a href="/admin/logout" class="btn btn-cinza">🚪 Sair</a>
       </div>
     </div>
@@ -316,6 +317,25 @@
   <footer>
     <p>Painel Administrativo — Urna Eletrônica Universitária</p>
   </footer>
+
+  <script>
+    async function zerarEleicao() {
+      const confirmou = confirm('Atenção: Deseja realmente zerar todos os votos e eleitores desta eleição? Essa ação apagará os votos para iniciar uma nova simulação.');
+      if (!confirmou) return;
+
+      try {
+        const resposta = await fetch('/api/zerar', { method: 'POST' });
+        const res = await resposta.json();
+        if (res.success) {
+          alert('Urna resetada com sucesso! Todos os votos e registros de eleitores foram zerados.');
+        } else {
+          alert('Erro ao resetar: ' + res.error);
+        }
+      } catch (erro) {
+        alert('Falha ao comunicar com o servidor.');
+      }
+    }
+  </script>
 
 </body>
 </html>
