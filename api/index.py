@@ -11,6 +11,7 @@
 import os
 import json
 import re
+import base64
 from datetime import datetime
 from urllib.parse import parse_qs
 from flask import (
@@ -76,7 +77,24 @@ ARQUIVO_CANDIDATOS = obter_caminho_arquivo("candidatos.json")
 
 # Pasta para salvar fotos dos candidatos enviados pelo admin
 PASTA_FOTOS = os.path.join(BASE_DIR, "static", "fotos")
-os.makedirs(PASTA_FOTOS, exist_ok=True)
+try:
+    os.makedirs(PASTA_FOTOS, exist_ok=True)
+except Exception:
+    pass
+
+def converter_foto_base64(foto):
+    """
+    Converte a foto enviada em texto Base64 para salvar diretamente no JSON.
+    Isso evita erro de 'Read-only file system' (Internal Server Error) na Vercel!
+    """
+    if not foto or not foto.filename:
+        return ""
+    dados_bytes = foto.read()
+    if not dados_bytes:
+        return ""
+    tipo_mime = foto.mimetype or "image/jpeg"
+    b64_str = base64.b64encode(dados_bytes).decode("utf-8")
+    return f"data:{tipo_mime};base64,{b64_str}"
 
 # Candidatos padrão caso o arquivo candidatos.json ainda não exista
 CANDIDATOS_PADRAO = [
@@ -416,9 +434,7 @@ def rota_admin_adicionar():
         else:
             foto = request.files.get("foto")
             if foto and foto.filename:
-                fname = secure_filename(f"{numero}_{foto.filename}")
-                foto.save(os.path.join(PASTA_FOTOS, fname))
-                foto_path = f"/static/fotos/{fname}"
+                foto_path = converter_foto_base64(foto)
 
             candidatos.append({
                 "numero": numero,
@@ -459,9 +475,7 @@ def rota_admin_editar(numero):
         else:
             foto = request.files.get("foto")
             if foto and foto.filename:
-                fname = secure_filename(f"{numero}_{foto.filename}")
-                foto.save(os.path.join(PASTA_FOTOS, fname))
-                foto_path = f"/static/fotos/{fname}"
+                foto_path = converter_foto_base64(foto)
 
             for c in candidatos:
                 if c["numero"] == numero:
@@ -513,6 +527,12 @@ def rota_fallback(subpath):
         return rota_admin_login()
     elif limpo == "admin/logout":
         return rota_admin_logout()
+    elif limpo == "admin/candidatos/adicionar":
+        return rota_admin_adicionar()
+    elif limpo.startswith("admin/candidatos/editar/"):
+        return rota_admin_editar(limpo.split("/")[-1])
+    elif limpo.startswith("admin/candidatos/excluir/"):
+        return rota_admin_excluir(limpo.split("/")[-1])
     elif limpo == "api/apuracao":
         return rota_api_apuracao()
     elif limpo == "api/candidatos":
