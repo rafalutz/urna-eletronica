@@ -44,6 +44,15 @@ class VercelPathMiddleware:
 
 app.wsgi_app = VercelPathMiddleware(app.wsgi_app)
 
+@app.after_request
+def desativar_cache(response):
+    """Evita que o navegador ou a Vercel guardem cache antigo das páginas e da API."""
+    if not request.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
 # ─── Carregamento de Templates ───────────────────────────────────────────────
 # Garante que o Flask encontre os arquivos HTML tanto localmente quanto na Vercel
 template_dirs = [
