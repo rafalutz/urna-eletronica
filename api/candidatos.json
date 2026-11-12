@@ -1,12 +1,12 @@
 [
   {
     "numero": "10",
-    "nome": "Ana Silva",
-    "partido": "PARTIDO A",
-    "vice": "Carlos Lima",
-    "foto_char": "👩",
-    "cor": "#2563eb",
-    "foto_path": ""
+    "nome": "Harry Potter",
+    "partido": "Hogwarts",
+    "vice": "Rony Weasley",
+    "foto_char": "🧙",
+    "cor": "#ea0b0b",
+    "foto_path": "/static/fotos/10_WhatsApp_Image_2026-11-05_at_16.24.29.jpeg"
   },
   {
     "numero": "20",

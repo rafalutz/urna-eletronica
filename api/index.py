@@ -107,7 +107,7 @@ def converter_foto_base64(foto):
 
 # Candidatos padrão caso o arquivo candidatos.json ainda não exista
 CANDIDATOS_PADRAO = [
-    {"numero": "10", "nome": "Ana Silva",    "partido": "PARTIDO A", "vice": "Carlos Lima",   "foto_char": "👩", "cor": "#2563eb", "foto_path": ""},
+    {"numero": "10", "nome": "Harry Potter", "partido": "Hogwarts",  "vice": "Rony Weasley",  "foto_char": "🧙", "cor": "#ea0b0b", "foto_path": "/static/fotos/10_WhatsApp_Image_2026-11-05_at_16.24.29.jpeg"},
     {"numero": "20", "nome": "Bruno Santos", "partido": "PARTIDO B", "vice": "Diana Costa",   "foto_char": "👨", "cor": "#16a34a", "foto_path": ""},
     {"numero": "30", "nome": "Clara Melo",   "partido": "PARTIDO C", "vice": "Eduardo Neto",  "foto_char": "👩", "cor": "#9333ea", "foto_path": ""},
     {"numero": "40", "nome": "Daniel Rocha", "partido": "PARTIDO D", "vice": "Fernanda Dias", "foto_char": "👨", "cor": "#ea580c", "foto_path": ""},
@@ -550,6 +550,8 @@ def rota_fallback(subpath):
         return rota_api_votar()
     elif limpo == "api/zerar" and request.method == "POST":
         return rota_api_zerar()
+    elif limpo.startswith("static/"):
+        return rota_static(limpo[len("static/"):])
     return rota_apuracao()
 
 # ─── Execução Local ──────────────────────────────────────────────────────────
